@@ -50,6 +50,9 @@ jobs:
           done
           pg_isready -h 127.0.0.1 -p 5432 -U postgres
 
+      - name: Create Test Database
+        run: make createdb
+
       - name: Run Migrations
         run: make dbmigrate-test
 

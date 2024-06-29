@@ -15,6 +15,10 @@ logs:
 psql:
 	docker exec -it bank-postgres psql -U postgres
 
+createdb:
+	@echo "Checking if test database exists..."
+	psql $(DB_SOURCE) -tc "SELECT 1 FROM pg_database WHERE datname = 'bankapitest'" | grep -q 1 || psql $(DB_SOURCE) -c 'CREATE DATABASE bankapitest;'
+
 dbmigrate:
 	cd sql && cd schema && goose postgres "${DB_SOURCE}" up
 
