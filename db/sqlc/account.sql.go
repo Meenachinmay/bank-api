@@ -7,6 +7,7 @@ package sqlc
 
 import (
 	"context"
+	"time"
 )
 
 const addAccountBalance = `-- name: AddAccountBalance :one
@@ -35,19 +36,25 @@ func (q *Queries) AddAccountBalance(ctx context.Context, arg AddAccountBalancePa
 }
 
 const createAccount = `-- name: CreateAccount :one
-INSERT INTO accounts (owner, balance, currency)
-VALUES ($1, $2, $3)
+INSERT INTO accounts (owner, balance, currency, created_at)
+VALUES ($1, $2, $3, $4)
 RETURNING id, owner, balance, currency, created_at
 `
 
 type CreateAccountParams struct {
-	Owner    string `json:"owner"`
-	Balance  int64  `json:"balance"`
-	Currency string `json:"currency"`
+	Owner     string    `json:"owner"`
+	Balance   int64     `json:"balance"`
+	Currency  string    `json:"currency"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
-	row := q.queryRow(ctx, q.createAccountStmt, createAccount, arg.Owner, arg.Balance, arg.Currency)
+	row := q.queryRow(ctx, q.createAccountStmt, createAccount,
+		arg.Owner,
+		arg.Balance,
+		arg.Currency,
+		arg.CreatedAt,
+	)
 	var i Account
 	err := row.Scan(
 		&i.ID,
