@@ -9,15 +9,35 @@ on:
 jobs:
 
   test:
+    name: Test
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: bankapi
+        options: >-
+          --health-cmd pg_idready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
-      - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.22'
-        id: go
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.22
+      id: go
 
-      - name: Test
-        run: make test
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v4
+
+    - name: Run migrations
+      run: make dbmigrate
+
+    - name: Test
+      run: make test
