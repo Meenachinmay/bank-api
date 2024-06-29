@@ -14,7 +14,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
@@ -26,18 +26,16 @@ jobs:
           --health-retries 5
 
     steps:
+      - uses: actions/checkout@v4
 
-    - name: Set up Go 1.x
-      uses: actions/setup-go@v4
-      with:
-        go-version: 1.22
-      id: go
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+        id: go
 
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v4
+      - name: Run Migrations
+        run: make dbmigrate
 
-    - name: Run migrations
-      run: make dbmigrate
-
-    - name: Test
-      run: make test
+      - name: Test
+        run: make test
