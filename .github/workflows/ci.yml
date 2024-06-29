@@ -50,6 +50,12 @@ jobs:
           done
           pg_isready -h 127.0.0.1 -p 5432 -U postgres
 
+      - name: Set Environment Variables
+        run: |
+          echo "DB_SOURCE=${{ secrets.DB_SOURCE }}" >> $GITHUB_ENV
+          echo "DB_SOURCE_TEST=${{ secrets.DB_SOURCE_TEST }}" >> $GITHUB_ENV
+          echo "DB_DRIVER=${{ secrets.DB_DRIVER }}" >> $GITHUB_ENV
+
       - name: Create Test Database
         run: make createdb
 

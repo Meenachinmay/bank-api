@@ -100,7 +100,7 @@ func (q *Queries) GetReferralHistory(ctx context.Context, referrerUserID int64) 
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ReferralHistory
+	items := []ReferralHistory{}
 	for rows.Next() {
 		var i ReferralHistory
 		if err := rows.Scan(
@@ -143,7 +143,7 @@ func (q *Queries) GetReferralHistoryByDate(ctx context.Context, arg GetReferralH
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ReferralHistory
+	items := []ReferralHistory{}
 	for rows.Next() {
 		var i ReferralHistory
 		if err := rows.Scan(
