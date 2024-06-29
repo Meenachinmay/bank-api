@@ -7,7 +7,6 @@ on:
     branches: [ "main" ]
 
 jobs:
-
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -20,7 +19,7 @@ jobs:
           POSTGRES_PASSWORD: password
           POSTGRES_DB: bankapi
         options: >-
-          --health-cmd pg_idready
+          --health-cmd "pg_isready -U postgres"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -33,6 +32,13 @@ jobs:
         with:
           go-version: '1.22'
         id: go
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            sleep 1
+          done
 
       - name: Run Migrations
         run: make dbmigrate
