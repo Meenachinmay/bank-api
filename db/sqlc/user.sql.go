@@ -8,21 +8,23 @@ package sqlc
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (user_name, email)
-VALUES ($1, $2)
+INSERT INTO users (user_name, email, created_at)
+VALUES ($1, $2, $3)
 RETURNING id, user_name, email, extra_interest, created_at
 `
 
 type CreateUserParams struct {
-	UserName string `json:"user_name"`
-	Email    string `json:"email"`
+	UserName  string    `json:"user_name"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.queryRow(ctx, q.createUserStmt, createUser, arg.UserName, arg.Email)
+	row := q.queryRow(ctx, q.createUserStmt, createUser, arg.UserName, arg.Email, arg.CreatedAt)
 	var i User
 	err := row.Scan(
 		&i.ID,

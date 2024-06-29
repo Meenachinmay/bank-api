@@ -4,6 +4,7 @@ import (
 	"bank-api/util"
 	"context"
 	"database/sql"
+	"github.com/Meenachinmay/microservice-shared/utils"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
@@ -11,9 +12,10 @@ import (
 
 func createRandomAccount(t *testing.T) Account {
 	args := CreateAccountParams{
-		Owner:    util.RandomOwner(),
-		Balance:  util.RandomMoney(),
-		Currency: util.RandomCurrency(),
+		Owner:     util.RandomOwner(),
+		Balance:   util.RandomMoney(),
+		Currency:  util.RandomCurrency(),
+		CreatedAt: utils.ConvertToTokyoTime(),
 	}
 
 	account, err := testQueries.CreateAccount(context.Background(), args)
