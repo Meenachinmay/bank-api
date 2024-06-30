@@ -24,12 +24,12 @@ func clearDatabase(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func createUniqueRandomAccount(t *testing.T) Account {
+func CreateUniqueRandomAccount(t *testing.T) Account {
 	mu.Lock()
 	defer mu.Unlock()
 	var account Account
 	for {
-		account = createRandomAccount(t)
+		account = CreateRandomAccount(t)
 		if _, exists := generatedAccounts[account.ID]; !exists {
 			generatedAccounts[account.ID] = struct{}{}
 			break
@@ -38,12 +38,12 @@ func createUniqueRandomAccount(t *testing.T) Account {
 	return account
 }
 
-func createUniqueRandomReferralCode(t *testing.T, referrerAccountID int64) ReferralCode {
+func CreateUniqueRandomReferralCode(t *testing.T, referrerAccountID int64) ReferralCode {
 	mu.Lock()
 	defer mu.Unlock()
 	var referralCode ReferralCode
 	for {
-		referralCode = createRandomReferralCode(t, referrerAccountID)
+		referralCode = CreateRandomReferralCode(t, referrerAccountID)
 		if _, exists := generatedCodes[referralCode.ID]; !exists {
 			generatedCodes[referralCode.ID] = struct{}{}
 			break
@@ -52,7 +52,7 @@ func createUniqueRandomReferralCode(t *testing.T, referrerAccountID int64) Refer
 	return referralCode
 }
 
-func createRandomReferralCode(t *testing.T, referrerAccountID int64) ReferralCode {
+func CreateRandomReferralCode(t *testing.T, referrerAccountID int64) ReferralCode {
 	loc, err := tz.LoadLocation("Asia/Tokyo")
 	require.NoError(t, err)
 
@@ -82,7 +82,7 @@ func randomTimeBetween(t *testing.T, start, end time.Time) time.Time {
 	return randomDate
 }
 
-func createRandomAccount(t *testing.T) Account {
+func CreateRandomAccount(t *testing.T) Account {
 	args := CreateAccountParams{
 		Owner:     util.RandomOwner(),
 		Balance:   util.RandomMoney(),
@@ -107,21 +107,21 @@ func createRandomAccount(t *testing.T) Account {
 }
 
 func TestCreateAccount(t *testing.T) {
-	createRandomAccount(t)
+	CreateRandomAccount(t)
 }
 
 func TestCreateUniqueAccount(t *testing.T) {
-	createUniqueRandomAccount(t)
+	CreateUniqueRandomAccount(t)
 }
 
 func TestCreateReferralCode(t *testing.T) {
-	account := createRandomAccount(t)
-	createUniqueRandomReferralCode(t, account.ID)
+	account := CreateRandomAccount(t)
+	CreateUniqueRandomReferralCode(t, account.ID)
 }
 
 func TestGetAccount(t *testing.T) {
 	// create account
-	account1 := createRandomAccount(t)
+	account1 := CreateRandomAccount(t)
 	account2, err := testQueries.GetAccount(context.Background(), account1.ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, account2)
@@ -135,7 +135,7 @@ func TestGetAccount(t *testing.T) {
 
 func TestUpdateAccount(t *testing.T) {
 	// create account
-	account1 := createRandomAccount(t)
+	account1 := CreateRandomAccount(t)
 
 	arg := UpdateAccountParams{
 		ID:      account1.ID,
@@ -154,7 +154,7 @@ func TestUpdateAccount(t *testing.T) {
 
 func TestDeleteAccount(t *testing.T) {
 	// create account
-	account1 := createRandomAccount(t)
+	account1 := CreateRandomAccount(t)
 	err := testQueries.DeleteAccount(context.Background(), account1.ID)
 	require.NoError(t, err)
 

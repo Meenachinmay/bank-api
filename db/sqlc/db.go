@@ -69,6 +69,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getTransferStmt, err = db.PrepareContext(ctx, getTransfer); err != nil {
 		return nil, fmt.Errorf("error preparing query GetTransfer: %w", err)
 	}
+	if q.getUnusedReferralCodesStmt, err = db.PrepareContext(ctx, getUnusedReferralCodes); err != nil {
+		return nil, fmt.Errorf("error preparing query GetUnusedReferralCodes: %w", err)
+	}
 	if q.listAccountsStmt, err = db.PrepareContext(ctx, listAccounts); err != nil {
 		return nil, fmt.Errorf("error preparing query ListAccounts: %w", err)
 	}
@@ -167,6 +170,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getTransferStmt: %w", cerr)
 		}
 	}
+	if q.getUnusedReferralCodesStmt != nil {
+		if cerr := q.getUnusedReferralCodesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getUnusedReferralCodesStmt: %w", cerr)
+		}
+	}
 	if q.listAccountsStmt != nil {
 		if cerr := q.listAccountsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listAccountsStmt: %w", cerr)
@@ -251,6 +259,7 @@ type Queries struct {
 	getReferralHistoryByDateStmt *sql.Stmt
 	getReferralsByDateRangeStmt  *sql.Stmt
 	getTransferStmt              *sql.Stmt
+	getUnusedReferralCodesStmt   *sql.Stmt
 	listAccountsStmt             *sql.Stmt
 	listEntriesStmt              *sql.Stmt
 	listTransfersStmt            *sql.Stmt
@@ -278,6 +287,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getReferralHistoryByDateStmt: q.getReferralHistoryByDateStmt,
 		getReferralsByDateRangeStmt:  q.getReferralsByDateRangeStmt,
 		getTransferStmt:              q.getTransferStmt,
+		getUnusedReferralCodesStmt:   q.getUnusedReferralCodesStmt,
 		listAccountsStmt:             q.listAccountsStmt,
 		listEntriesStmt:              q.listEntriesStmt,
 		listTransfersStmt:            q.listTransfersStmt,

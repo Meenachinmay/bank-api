@@ -190,6 +190,49 @@ func (q *Queries) GetReferralsByDateRange(ctx context.Context, arg GetReferralsB
 	return count, err
 }
 
+const getUnusedReferralCodes = `-- name: GetUnusedReferralCodes :many
+SELECT id, referral_code, referrer_account_id, is_used, created_at, used_at FROM referral_codes
+WHERE is_used = true
+  AND referrer_account_id = $1
+  AND created_at >= $2 AND created_at <= $3
+`
+
+type GetUnusedReferralCodesParams struct {
+	ReferrerAccountID int64     `json:"referrer_account_id"`
+	CreatedAt         time.Time `json:"created_at"`
+	CreatedAt_2       time.Time `json:"created_at_2"`
+}
+
+func (q *Queries) GetUnusedReferralCodes(ctx context.Context, arg GetUnusedReferralCodesParams) ([]ReferralCode, error) {
+	rows, err := q.query(ctx, q.getUnusedReferralCodesStmt, getUnusedReferralCodes, arg.ReferrerAccountID, arg.CreatedAt, arg.CreatedAt_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ReferralCode{}
+	for rows.Next() {
+		var i ReferralCode
+		if err := rows.Scan(
+			&i.ID,
+			&i.ReferralCode,
+			&i.ReferrerAccountID,
+			&i.IsUsed,
+			&i.CreatedAt,
+			&i.UsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markReferralCodeUsed = `-- name: MarkReferralCodeUsed :one
 UPDATE referral_codes
 SET is_used = true, used_at = $2
