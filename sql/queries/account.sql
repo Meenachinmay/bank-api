@@ -36,6 +36,6 @@ WHERE id = $1;
 
 -- name: UpdateAccountInterest :one
 UPDATE accounts
-SET extra_interest = $2
+SET extra_interest = $2, extra_interest_start_date = $3, extra_interest_duration = $4
 WHERE id = $1
 RETURNING *;

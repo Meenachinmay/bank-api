@@ -14,6 +14,12 @@ SELECT COUNT(*) FROM referral_codes
     AND is_used = true
     AND created_at >= $2 AND created_at <= $3;
 
+-- name: GetUnusedReferralCodes :many
+SELECT * FROM referral_codes
+WHERE is_used = true
+  AND referrer_account_id = $1
+  AND created_at >= $2 AND created_at <= $3;
+
 -- name: MarkReferralCodeUsed :one
 UPDATE referral_codes
 SET is_used = true, used_at = $2

@@ -10,14 +10,16 @@ import (
 )
 
 type Account struct {
-	ID            int64           `json:"id"`
-	Owner         string          `json:"owner"`
-	Email         string          `json:"email"`
-	ExtraInterest sql.NullFloat64 `json:"extra_interest"`
-	Interest      float64         `json:"interest"`
-	Balance       int64           `json:"balance"`
-	Currency      string          `json:"currency"`
-	CreatedAt     time.Time       `json:"created_at"`
+	ID                     int64           `json:"id"`
+	Owner                  string          `json:"owner"`
+	Email                  string          `json:"email"`
+	ExtraInterest          sql.NullFloat64 `json:"extra_interest"`
+	ExtraInterestStartDate sql.NullTime    `json:"extra_interest_start_date"`
+	ExtraInterestDuration  int32           `json:"extra_interest_duration"`
+	Interest               float64         `json:"interest"`
+	Balance                int64           `json:"balance"`
+	Currency               string          `json:"currency"`
+	CreatedAt              time.Time       `json:"created_at"`
 }
 
 type Entry struct {

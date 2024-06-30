@@ -1,16 +1,22 @@
 package sqlc
 
 import (
+	"bank-api/util"
 	"context"
+	"database/sql"
+	"github.com/Meenachinmay/microservice-shared/utils"
 	"github.com/stretchr/testify/require"
+	"log"
+	"math/rand"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestTransferTx(t *testing.T) {
 	store := NewStore(testDB)
-	account1 := createRandomAccount(t)
-	account2 := createRandomAccount(t)
+	account1 := CreateRandomAccount(t)
+	account2 := CreateRandomAccount(t)
 
 	n := 5
 	amount := int64(10)
@@ -104,8 +110,8 @@ func TestTransferTx(t *testing.T) {
 
 func TestTransferTxDeadlock(t *testing.T) {
 	store := NewStore(testDB)
-	account1 := createRandomAccount(t)
-	account2 := createRandomAccount(t)
+	account1 := CreateRandomAccount(t)
+	account2 := CreateRandomAccount(t)
 
 	n := 10
 	amount := int64(10)
@@ -153,68 +159,205 @@ func TestUseReferralCodeTx(t *testing.T) {
 	// clear database
 	clearDatabase(t)
 
-	referrerAccount := createRandomAccount(t)
+	n := 10
 
-	n := 11
-	errs := make(chan error, n)
-	results := make(chan UseReferralCodeTxResult, n)
-	var wg sync.WaitGroup
+	referrerAccounts := make([]Account, n)
+	for i := range referrerAccounts {
+		referrerAccounts[i] = CreateUniqueRandomAccount(t)
+	}
 
-	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func(iteration int) {
-			defer wg.Done()
+	// create referral codes for each referrer account
+	for _, referrerAccount := range referrerAccounts {
+		for i := 0; i < 5; i++ {
 			referralCode := createUniqueRandomReferralCode(t, referrerAccount.ID)
+			//Randomly set some referral codes as used
+			if rand.Intn(2) == 0 { // 50% chance to set the code as used
+				_, err := store.MarkReferralCodeUsed(context.Background(), MarkReferralCodeUsedParams{
+					ReferralCode: referralCode.ReferralCode,
+					UsedAt:       sql.NullTime{Time: utils.ConvertToTokyoTime(), Valid: true},
+				})
+				require.NoError(t, err)
+			}
+		}
+	}
 
-			referredAccount := createUniqueRandomAccount(t)
+	var wg sync.WaitGroup
+	errs := make(chan error, len(referrerAccounts))
+	results := make(chan UseReferralCodeTxResult, len(referrerAccounts))
+
+	// Run the transaction for each referrer account
+	for _, referrerAccount := range referrerAccounts {
+		wg.Add(1)
+		go func(account Account) {
+			defer wg.Done()
 
 			result, err := store.UseReferralCodeTx(context.Background(), UseReferralCodeTxParams{
-				ReferralCode:      referralCode.ReferralCode,
-				ReferredAccountID: referredAccount.ID,
+				ReferrerAccountID: account.ID,
 			})
 
 			errs <- err
 			results <- result
-		}(i)
+		}(referrerAccount)
 	}
 
 	wg.Wait()
 	close(errs)
 	close(results)
 
-	var referralCount int
-
-	for i := 0; i < n; i++ {
-		err := <-errs
+	for err := range errs {
 		require.NoError(t, err)
+	}
 
-		result := <-results
+	// Check results for each referrer account
+	for result := range results {
 		require.NotEmpty(t, result)
 
-		// check referral account
-		require.Equal(t, referrerAccount.ID, result.ReferralCode.ReferrerAccountID)
+		// Verify updated extra interest
+		account, err := store.GetAccount(context.Background(), result.ReferrerAccountUpdate.ID)
+		require.NoError(t, err)
+		require.NotEmpty(t, account)
 
-		// check referral code
-		require.Equal(t, true, result.ReferralCode.IsUsed)
-		require.NotZero(t, result.ReferralCode.UsedAt)
+		// Fetch used referral count for this account
+		startDate, endDate := getReferralDateRange()
+		referralCount, err := store.GetReferralsByDateRange(context.Background(), GetReferralsByDateRangeParams{
+			ReferrerAccountID: account.ID,
+			CreatedAt:         startDate,
+			CreatedAt_2:       endDate,
+		})
+		require.NoError(t, err)
 
-		// check referral history
-		require.Equal(t, referrerAccount.ID, result.ReferralHistory.ReferrerAccountID)
-		require.NotZero(t, result.ReferralHistory.ReferredAccountID)
-		require.NotZero(t, result.ReferralHistory.ReferralCodeID)
-		require.NotZero(t, result.ReferralHistory.ReferralDate)
+		log.Println(">> referral count:", referralCount)
 
-		referralCount++
+		expectedExtraInterest := float64(referralCount)
+		if expectedExtraInterest > 10.0 {
+			expectedExtraInterest = 10.0
+		}
+
+		log.Println(">> referrer account extra interest:", account.ExtraInterest.Float64)
+
+		require.Equal(t, expectedExtraInterest, account.ExtraInterest.Float64)
+		require.NotZero(t, account.ExtraInterestStartDate)
+		require.Equal(t, int32(9), account.ExtraInterestDuration)
 	}
-	// check the update extra interest
+}
+
+// createUniqueRandomReferralCode creates a unique random referral code for the given referrer account.
+func createUniqueRandomReferralCode(t *testing.T, referrerAccountID int64) ReferralCode {
+	arg := CreateReferralCodeParams{
+		ReferralCode:      util.RandomString(10),
+		ReferrerAccountID: referrerAccountID,
+		CreatedAt:         randomDateBetween(t, "2024-06-21", "2024-07-01"),
+	}
+
+	referralCode, err := testQueries.CreateReferralCode(context.Background(), arg)
+	require.NoError(t, err)
+	require.NotEmpty(t, referralCode)
+
+	return referralCode
+}
+
+// randomDateBetween generates a random date between two dates
+func randomDateBetween(t *testing.T, startDateStr, endDateStr string) time.Time {
+	layout := "2006-01-02"
+	startDate, err := time.Parse(layout, startDateStr)
+	require.NoError(t, err)
+	endDate, err := time.Parse(layout, endDateStr)
+	require.NoError(t, err)
+
+	delta := endDate.Sub(startDate)
+	sec := rand.Int63n(int64(delta.Seconds()))
+	return startDate.Add(time.Duration(sec) * time.Second)
+}
+
+// getReferralDateRange returns the start and end date for the referral code date range
+func getReferralDateRange() (time.Time, time.Time) {
+	currentDate := utils.ConvertToTokyoTime()
+	loc, _ := time.LoadLocation("Asia/Tokyo")
+	year, month, _ := currentDate.Date()
+
+	var startDate, endDate time.Time
+	if month == time.January {
+		year--
+		startDate = time.Date(year, time.December, 21, 0, 0, 0, 0, loc)
+		endDate = time.Date(year, time.January, 20, 23, 59, 59, 0, loc)
+	} else {
+		startDate = time.Date(year, month-1, 21, 0, 0, 0, 0, loc)
+		endDate = time.Date(year, month, 20, 23, 59, 59, 0, loc)
+	}
+
+	return startDate, endDate
+}
+
+func TestUseReferralCodeTxWithEdgeCases(t *testing.T) {
+	store := NewStore(testDB)
+
+	// Clear the database
+	clearDatabase(t)
+
+	// Create a single referrer account
+	referrerAccount := CreateUniqueRandomAccount(t)
+
+	// Edge case 1: No referral codes created
+	// Run the transaction
+	_, err := store.UseReferralCodeTx(context.Background(), UseReferralCodeTxParams{
+		ReferrerAccountID: referrerAccount.ID,
+	})
+	require.NoError(t, err)
+
+	// Verify no extra interest
 	account, err := store.GetAccount(context.Background(), referrerAccount.ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, account)
+	require.Zero(t, account.ExtraInterest.Float64)
 
-	expectedExtraInterest := float64(referralCount)
-	if expectedExtraInterest >= 10.0 {
-		expectedExtraInterest = 10.0
+	// Edge case 2: Create referral codes on boundary dates
+	referralCodeOnStartBoundary := createReferralCodeWithDate(t, referrerAccount.ID, "2024-06-21T00:00:00Z")
+	referralCodeOnEndBoundary := createReferralCodeWithDate(t, referrerAccount.ID, "2024-07-20T23:59:59Z")
+
+	// Set referral codes as used
+	_, err = store.MarkReferralCodeUsed(context.Background(), MarkReferralCodeUsedParams{
+		ReferralCode: referralCodeOnStartBoundary.ReferralCode,
+		UsedAt:       sql.NullTime{Time: utils.ConvertToTokyoTime(), Valid: true},
+	})
+	require.NoError(t, err)
+
+	_, err = store.MarkReferralCodeUsed(context.Background(), MarkReferralCodeUsedParams{
+		ReferralCode: referralCodeOnEndBoundary.ReferralCode,
+		UsedAt:       sql.NullTime{Time: utils.ConvertToTokyoTime(), Valid: true},
+	})
+	require.NoError(t, err)
+
+	// Run the transaction
+	_, err = store.UseReferralCodeTx(context.Background(), UseReferralCodeTxParams{
+		ReferrerAccountID: referrerAccount.ID,
+	})
+	require.NoError(t, err)
+
+	// Verify updated extra interest
+	account, err = store.GetAccount(context.Background(), referrerAccount.ID)
+	require.NoError(t, err)
+	require.NotEmpty(t, account)
+
+	expectedExtraInterest := 2.0
+	require.Equal(t, expectedExtraInterest, account.ExtraInterest.Float64)
+	require.NotZero(t, account.ExtraInterestStartDate)
+	require.Equal(t, int32(9), account.ExtraInterestDuration)
+}
+
+// createReferralCodeWithDate creates a referral code with a specific creation date.
+func createReferralCodeWithDate(t *testing.T, referrerAccountID int64, createdAt string) ReferralCode {
+	createdAtTime, err := time.Parse(time.RFC3339, createdAt)
+	require.NoError(t, err)
+
+	arg := CreateReferralCodeParams{
+		ReferralCode:      util.RandomString(10),
+		ReferrerAccountID: referrerAccountID,
+		CreatedAt:         createdAtTime,
 	}
 
-	require.Equal(t, expectedExtraInterest, account.ExtraInterest.Float64)
+	referralCode, err := testQueries.CreateReferralCode(context.Background(), arg)
+	require.NoError(t, err)
+	require.NotEmpty(t, referralCode)
+
+	return referralCode
 }
