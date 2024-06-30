@@ -2,3 +2,7 @@
 */.env
 .idea
 go.sum
+
+db-data/
+
+db-data/*
