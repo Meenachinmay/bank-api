@@ -3,6 +3,7 @@ package sqlc
 import (
 	"context"
 	"github.com/stretchr/testify/require"
+	"sync"
 	"testing"
 )
 
@@ -144,4 +145,76 @@ func TestTransferTxDeadlock(t *testing.T) {
 
 	require.Equal(t, account1.Balance, updatedAccount1.Balance)
 	require.Equal(t, account2.Balance, updatedAccount2.Balance)
+}
+
+func TestUseReferralCodeTx(t *testing.T) {
+	store := NewStore(testDB)
+
+	// clear database
+	clearDatabase(t)
+
+	referrerAccount := createRandomAccount(t)
+
+	n := 11
+	errs := make(chan error, n)
+	results := make(chan UseReferralCodeTxResult, n)
+	var wg sync.WaitGroup
+
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(iteration int) {
+			defer wg.Done()
+			referralCode := createUniqueRandomReferralCode(t, referrerAccount.ID)
+
+			referredAccount := createUniqueRandomAccount(t)
+
+			result, err := store.UseReferralCodeTx(context.Background(), UseReferralCodeTxParams{
+				ReferralCode:      referralCode.ReferralCode,
+				ReferredAccountID: referredAccount.ID,
+			})
+
+			errs <- err
+			results <- result
+		}(i)
+	}
+
+	wg.Wait()
+	close(errs)
+	close(results)
+
+	var referralCount int
+
+	for i := 0; i < n; i++ {
+		err := <-errs
+		require.NoError(t, err)
+
+		result := <-results
+		require.NotEmpty(t, result)
+
+		// check referral account
+		require.Equal(t, referrerAccount.ID, result.ReferralCode.ReferrerAccountID)
+
+		// check referral code
+		require.Equal(t, true, result.ReferralCode.IsUsed)
+		require.NotZero(t, result.ReferralCode.UsedAt)
+
+		// check referral history
+		require.Equal(t, referrerAccount.ID, result.ReferralHistory.ReferrerAccountID)
+		require.NotZero(t, result.ReferralHistory.ReferredAccountID)
+		require.NotZero(t, result.ReferralHistory.ReferralCodeID)
+		require.NotZero(t, result.ReferralHistory.ReferralDate)
+
+		referralCount++
+	}
+	// check the update extra interest
+	account, err := store.GetAccount(context.Background(), referrerAccount.ID)
+	require.NoError(t, err)
+	require.NotEmpty(t, account)
+
+	expectedExtraInterest := float64(referralCount)
+	if expectedExtraInterest >= 10.0 {
+		expectedExtraInterest = 10.0
+	}
+
+	require.Equal(t, expectedExtraInterest, account.ExtraInterest.Float64)
 }

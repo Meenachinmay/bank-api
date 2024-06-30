@@ -1,19 +1,92 @@
 package sqlc
 
 import (
+	"4d63.com/tz"
 	"bank-api/util"
 	"context"
 	"database/sql"
 	"github.com/Meenachinmay/microservice-shared/utils"
 	"github.com/stretchr/testify/require"
+	"math/rand"
+	"sync"
 	"testing"
 	"time"
 )
+
+var (
+	generatedAccounts = make(map[int64]struct{})
+	generatedCodes    = make(map[int64]struct{})
+	mu                sync.Mutex
+)
+
+func clearDatabase(t *testing.T) {
+	_, err := testDB.Exec("TRUNCATE TABLE accounts, referral_codes, referral_history RESTART IDENTITY CASCADE")
+	require.NoError(t, err)
+}
+
+func createUniqueRandomAccount(t *testing.T) Account {
+	mu.Lock()
+	defer mu.Unlock()
+	var account Account
+	for {
+		account = createRandomAccount(t)
+		if _, exists := generatedAccounts[account.ID]; !exists {
+			generatedAccounts[account.ID] = struct{}{}
+			break
+		}
+	}
+	return account
+}
+
+func createUniqueRandomReferralCode(t *testing.T, referrerAccountID int64) ReferralCode {
+	mu.Lock()
+	defer mu.Unlock()
+	var referralCode ReferralCode
+	for {
+		referralCode = createRandomReferralCode(t, referrerAccountID)
+		if _, exists := generatedCodes[referralCode.ID]; !exists {
+			generatedCodes[referralCode.ID] = struct{}{}
+			break
+		}
+	}
+	return referralCode
+}
+
+func createRandomReferralCode(t *testing.T, referrerAccountID int64) ReferralCode {
+	loc, err := tz.LoadLocation("Asia/Tokyo")
+	require.NoError(t, err)
+
+	currentDate := utils.ConvertToTokyoTime()
+	startDate := time.Date(currentDate.Year(), currentDate.Month(), 21, 0, 0, 0, 0, loc).AddDate(0, -1, 0)
+	endDate := time.Date(currentDate.Year(), currentDate.Month(), 20, 23, 59, 59, 0, loc)
+
+	randomDate := randomTimeBetween(t, startDate, endDate)
+
+	arg := CreateReferralCodeParams{
+		ReferralCode:      util.RandomString(10),
+		ReferrerAccountID: referrerAccountID,
+		CreatedAt:         randomDate,
+	}
+
+	referralCode, err := testQueries.CreateReferralCode(context.Background(), arg)
+	require.NoError(t, err)
+	require.NotEmpty(t, referralCode)
+
+	return referralCode
+}
+
+func randomTimeBetween(t *testing.T, start, end time.Time) time.Time {
+	delta := end.Sub(start)
+	sec := rand.Int63n(int64(delta.Seconds()))
+	randomDate := start.Add(time.Duration(sec) * time.Second)
+	return randomDate
+}
 
 func createRandomAccount(t *testing.T) Account {
 	args := CreateAccountParams{
 		Owner:     util.RandomOwner(),
 		Balance:   util.RandomMoney(),
+		Email:     util.RandomEmail(),
 		Currency:  util.RandomCurrency(),
 		CreatedAt: utils.ConvertToTokyoTime(),
 	}
@@ -24,6 +97,7 @@ func createRandomAccount(t *testing.T) Account {
 
 	require.Equal(t, args.Owner, account.Owner)
 	require.Equal(t, args.Balance, account.Balance)
+	require.Equal(t, args.Email, account.Email)
 	require.Equal(t, args.Currency, account.Currency)
 
 	require.NotZero(t, account.ID)
@@ -34,6 +108,15 @@ func createRandomAccount(t *testing.T) Account {
 
 func TestCreateAccount(t *testing.T) {
 	createRandomAccount(t)
+}
+
+func TestCreateUniqueAccount(t *testing.T) {
+	createUniqueRandomAccount(t)
+}
+
+func TestCreateReferralCode(t *testing.T) {
+	account := createRandomAccount(t)
+	createUniqueRandomReferralCode(t, account.ID)
 }
 
 func TestGetAccount(t *testing.T) {

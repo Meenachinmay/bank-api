@@ -18,6 +18,10 @@ func NewServer(store *sqlc.Store) *Server {
 	router.GET("/accounts/:id", server.getAccount)
 	router.GET("/accounts", server.getAccounts)
 
+	// referral_Code feature routes
+	router.POST("/referral/account/:account", server.createReferral)
+	router.POST("/referral/code/:code", server.useReferralCode)
+
 	server.router = router
 	return server
 }

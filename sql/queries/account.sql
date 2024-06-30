@@ -1,6 +1,6 @@
 -- name: CreateAccount :one
-INSERT INTO accounts (owner, balance, currency, created_at)
-VALUES ($1, $2, $3, $4)
+INSERT INTO accounts (owner, balance, email, currency, created_at)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetAccount :one
@@ -33,3 +33,9 @@ RETURNING *;
 -- name: DeleteAccount :exec
 DELETE FROM accounts
 WHERE id = $1;
+
+-- name: UpdateAccountInterest :one
+UPDATE accounts
+SET extra_interest = $2
+WHERE id = $1
+RETURNING *;
