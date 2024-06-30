@@ -41,3 +41,20 @@ func RandomCurrency() string {
 	n := len(currencies)
 	return currencies[rand.Intn(n)]
 }
+
+// generateRandomString generates a random string of a given length
+func generateRandomString(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
+}
+
+// generateRandomEmail generates a random email address
+func RandomEmail() string {
+	user := generateRandomString(8)
+	domain := generateRandomString(5)
+	return user + "@" + domain + ".com"
+}

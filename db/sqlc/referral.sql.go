@@ -12,23 +12,24 @@ import (
 )
 
 const createReferralCode = `-- name: CreateReferralCode :one
-INSERT INTO referral_codes (referral_code, referrer_user_id)
-VALUES ($1, $2)
-RETURNING id, referral_code, referrer_user_id, is_used, created_at, used_at
+INSERT INTO referral_codes (referral_code, referrer_account_id, created_at)
+VALUES ($1, $2, $3)
+RETURNING id, referral_code, referrer_account_id, is_used, created_at, used_at
 `
 
 type CreateReferralCodeParams struct {
-	ReferralCode   string `json:"referral_code"`
-	ReferrerUserID int64  `json:"referrer_user_id"`
+	ReferralCode      string    `json:"referral_code"`
+	ReferrerAccountID int64     `json:"referrer_account_id"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 func (q *Queries) CreateReferralCode(ctx context.Context, arg CreateReferralCodeParams) (ReferralCode, error) {
-	row := q.queryRow(ctx, q.createReferralCodeStmt, createReferralCode, arg.ReferralCode, arg.ReferrerUserID)
+	row := q.queryRow(ctx, q.createReferralCodeStmt, createReferralCode, arg.ReferralCode, arg.ReferrerAccountID, arg.CreatedAt)
 	var i ReferralCode
 	err := row.Scan(
 		&i.ID,
 		&i.ReferralCode,
-		&i.ReferrerUserID,
+		&i.ReferrerAccountID,
 		&i.IsUsed,
 		&i.CreatedAt,
 		&i.UsedAt,
@@ -37,30 +38,32 @@ func (q *Queries) CreateReferralCode(ctx context.Context, arg CreateReferralCode
 }
 
 const createReferralHistory = `-- name: CreateReferralHistory :one
-INSERT INTO referral_history (referrer_user_id, referred_user_id, referral_code_id, referral_date)
-VALUES ($1, $2, $3, $4)
-RETURNING id, referrer_user_id, referred_user_id, referral_code_id, referral_date, created_at
+INSERT INTO referral_history (referrer_account_id, referred_account_id, referral_code_id, referral_date, created_at)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, referrer_account_id, referred_account_id, referral_code_id, referral_date, created_at
 `
 
 type CreateReferralHistoryParams struct {
-	ReferrerUserID int64     `json:"referrer_user_id"`
-	ReferredUserID int64     `json:"referred_user_id"`
-	ReferralCodeID int64     `json:"referral_code_id"`
-	ReferralDate   time.Time `json:"referral_date"`
+	ReferrerAccountID int64     `json:"referrer_account_id"`
+	ReferredAccountID int64     `json:"referred_account_id"`
+	ReferralCodeID    int64     `json:"referral_code_id"`
+	ReferralDate      time.Time `json:"referral_date"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 func (q *Queries) CreateReferralHistory(ctx context.Context, arg CreateReferralHistoryParams) (ReferralHistory, error) {
 	row := q.queryRow(ctx, q.createReferralHistoryStmt, createReferralHistory,
-		arg.ReferrerUserID,
-		arg.ReferredUserID,
+		arg.ReferrerAccountID,
+		arg.ReferredAccountID,
 		arg.ReferralCodeID,
 		arg.ReferralDate,
+		arg.CreatedAt,
 	)
 	var i ReferralHistory
 	err := row.Scan(
 		&i.ID,
-		&i.ReferrerUserID,
-		&i.ReferredUserID,
+		&i.ReferrerAccountID,
+		&i.ReferredAccountID,
 		&i.ReferralCodeID,
 		&i.ReferralDate,
 		&i.CreatedAt,
@@ -69,7 +72,7 @@ func (q *Queries) CreateReferralHistory(ctx context.Context, arg CreateReferralH
 }
 
 const getReferralCode = `-- name: GetReferralCode :one
-SELECT id, referral_code, referrer_user_id, is_used, created_at, used_at FROM referral_codes
+SELECT id, referral_code, referrer_account_id, is_used, created_at, used_at FROM referral_codes
 WHERE referral_code = $1
 LIMIT 1
 `
@@ -80,7 +83,7 @@ func (q *Queries) GetReferralCode(ctx context.Context, referralCode string) (Ref
 	err := row.Scan(
 		&i.ID,
 		&i.ReferralCode,
-		&i.ReferrerUserID,
+		&i.ReferrerAccountID,
 		&i.IsUsed,
 		&i.CreatedAt,
 		&i.UsedAt,
@@ -89,13 +92,13 @@ func (q *Queries) GetReferralCode(ctx context.Context, referralCode string) (Ref
 }
 
 const getReferralHistory = `-- name: GetReferralHistory :many
-SELECT id, referrer_user_id, referred_user_id, referral_code_id, referral_date, created_at FROM referral_history
-WHERE referrer_user_id = $1
+SELECT id, referrer_account_id, referred_account_id, referral_code_id, referral_date, created_at FROM referral_history
+WHERE referrer_account_id = $1
 ORDER BY referral_date
 `
 
-func (q *Queries) GetReferralHistory(ctx context.Context, referrerUserID int64) ([]ReferralHistory, error) {
-	rows, err := q.query(ctx, q.getReferralHistoryStmt, getReferralHistory, referrerUserID)
+func (q *Queries) GetReferralHistory(ctx context.Context, referrerAccountID int64) ([]ReferralHistory, error) {
+	rows, err := q.query(ctx, q.getReferralHistoryStmt, getReferralHistory, referrerAccountID)
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +108,8 @@ func (q *Queries) GetReferralHistory(ctx context.Context, referrerUserID int64) 
 		var i ReferralHistory
 		if err := rows.Scan(
 			&i.ID,
-			&i.ReferrerUserID,
-			&i.ReferredUserID,
+			&i.ReferrerAccountID,
+			&i.ReferredAccountID,
 			&i.ReferralCodeID,
 			&i.ReferralDate,
 			&i.CreatedAt,
@@ -125,20 +128,20 @@ func (q *Queries) GetReferralHistory(ctx context.Context, referrerUserID int64) 
 }
 
 const getReferralHistoryByDate = `-- name: GetReferralHistoryByDate :many
-SELECT id, referrer_user_id, referred_user_id, referral_code_id, referral_date, created_at FROM referral_history
-WHERE referrer_user_id = $1
+SELECT id, referrer_account_id, referred_account_id, referral_code_id, referral_date, created_at FROM referral_history
+WHERE referrer_account_id = $1
   AND referral_date >= $2 AND referral_date <= $3
 ORDER BY referral_date
 `
 
 type GetReferralHistoryByDateParams struct {
-	ReferrerUserID int64     `json:"referrer_user_id"`
-	ReferralDate   time.Time `json:"referral_date"`
-	ReferralDate_2 time.Time `json:"referral_date_2"`
+	ReferrerAccountID int64     `json:"referrer_account_id"`
+	ReferralDate      time.Time `json:"referral_date"`
+	ReferralDate_2    time.Time `json:"referral_date_2"`
 }
 
 func (q *Queries) GetReferralHistoryByDate(ctx context.Context, arg GetReferralHistoryByDateParams) ([]ReferralHistory, error) {
-	rows, err := q.query(ctx, q.getReferralHistoryByDateStmt, getReferralHistoryByDate, arg.ReferrerUserID, arg.ReferralDate, arg.ReferralDate_2)
+	rows, err := q.query(ctx, q.getReferralHistoryByDateStmt, getReferralHistoryByDate, arg.ReferrerAccountID, arg.ReferralDate, arg.ReferralDate_2)
 	if err != nil {
 		return nil, err
 	}
@@ -148,8 +151,8 @@ func (q *Queries) GetReferralHistoryByDate(ctx context.Context, arg GetReferralH
 		var i ReferralHistory
 		if err := rows.Scan(
 			&i.ID,
-			&i.ReferrerUserID,
-			&i.ReferredUserID,
+			&i.ReferrerAccountID,
+			&i.ReferredAccountID,
 			&i.ReferralCodeID,
 			&i.ReferralDate,
 			&i.CreatedAt,
@@ -167,11 +170,31 @@ func (q *Queries) GetReferralHistoryByDate(ctx context.Context, arg GetReferralH
 	return items, nil
 }
 
+const getReferralsByDateRange = `-- name: GetReferralsByDateRange :one
+SELECT COUNT(*) FROM referral_codes
+    WHERE referrer_account_id = $1
+    AND is_used = true
+    AND created_at >= $2 AND created_at <= $3
+`
+
+type GetReferralsByDateRangeParams struct {
+	ReferrerAccountID int64     `json:"referrer_account_id"`
+	CreatedAt         time.Time `json:"created_at"`
+	CreatedAt_2       time.Time `json:"created_at_2"`
+}
+
+func (q *Queries) GetReferralsByDateRange(ctx context.Context, arg GetReferralsByDateRangeParams) (int64, error) {
+	row := q.queryRow(ctx, q.getReferralsByDateRangeStmt, getReferralsByDateRange, arg.ReferrerAccountID, arg.CreatedAt, arg.CreatedAt_2)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const markReferralCodeUsed = `-- name: MarkReferralCodeUsed :one
 UPDATE referral_codes
 SET is_used = true, used_at = $2
 WHERE referral_code = $1
-RETURNING id, referral_code, referrer_user_id, is_used, created_at, used_at
+RETURNING id, referral_code, referrer_account_id, is_used, created_at, used_at
 `
 
 type MarkReferralCodeUsedParams struct {
@@ -185,7 +208,7 @@ func (q *Queries) MarkReferralCodeUsed(ctx context.Context, arg MarkReferralCode
 	err := row.Scan(
 		&i.ID,
 		&i.ReferralCode,
-		&i.ReferrerUserID,
+		&i.ReferrerAccountID,
 		&i.IsUsed,
 		&i.CreatedAt,
 		&i.UsedAt,

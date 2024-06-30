@@ -10,11 +10,14 @@ import (
 )
 
 type Account struct {
-	ID        int64     `json:"id"`
-	Owner     string    `json:"owner"`
-	Balance   int64     `json:"balance"`
-	Currency  string    `json:"currency"`
-	CreatedAt time.Time `json:"created_at"`
+	ID            int64           `json:"id"`
+	Owner         string          `json:"owner"`
+	Email         string          `json:"email"`
+	ExtraInterest sql.NullFloat64 `json:"extra_interest"`
+	Interest      float64         `json:"interest"`
+	Balance       int64           `json:"balance"`
+	Currency      string          `json:"currency"`
+	CreatedAt     time.Time       `json:"created_at"`
 }
 
 type Entry struct {
@@ -26,21 +29,21 @@ type Entry struct {
 }
 
 type ReferralCode struct {
-	ID             int64        `json:"id"`
-	ReferralCode   string       `json:"referral_code"`
-	ReferrerUserID int64        `json:"referrer_user_id"`
-	IsUsed         sql.NullBool `json:"is_used"`
-	CreatedAt      time.Time    `json:"created_at"`
-	UsedAt         sql.NullTime `json:"used_at"`
+	ID                int64        `json:"id"`
+	ReferralCode      string       `json:"referral_code"`
+	ReferrerAccountID int64        `json:"referrer_account_id"`
+	IsUsed            bool         `json:"is_used"`
+	CreatedAt         time.Time    `json:"created_at"`
+	UsedAt            sql.NullTime `json:"used_at"`
 }
 
 type ReferralHistory struct {
-	ID             int64     `json:"id"`
-	ReferrerUserID int64     `json:"referrer_user_id"`
-	ReferredUserID int64     `json:"referred_user_id"`
-	ReferralCodeID int64     `json:"referral_code_id"`
-	ReferralDate   time.Time `json:"referral_date"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID                int64     `json:"id"`
+	ReferrerAccountID int64     `json:"referrer_account_id"`
+	ReferredAccountID int64     `json:"referred_account_id"`
+	ReferralCodeID    int64     `json:"referral_code_id"`
+	ReferralDate      time.Time `json:"referral_date"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 type Transfer struct {
@@ -50,12 +53,4 @@ type Transfer struct {
 	// must be positive
 	Amount    int64     `json:"amount"`
 	CreatedAt time.Time `json:"created_at"`
-}
-
-type User struct {
-	ID            int64           `json:"id"`
-	UserName      string          `json:"user_name"`
-	Email         string          `json:"email"`
-	ExtraInterest sql.NullFloat64 `json:"extra_interest"`
-	CreatedAt     time.Time       `json:"created_at"`
 }
