@@ -4,6 +4,8 @@ CREATE TABLE "accounts" (
                             "owner"      varchar     NOT NULL,
                             "email" VARCHAR(255) NOT NULL UNIQUE,
                             "extra_interest" FLOAT DEFAULT 0,
+                            "extra_interest_start_date" DATE,
+                            "extra_interest_duration" INT NOT NULL DEFAULT 9,
                             "interest" FLOAT DEFAULT 4.5 NOT NULL,
                             "balance"    bigint      NOT NULL,
                             "currency"   varchar     NOT NULL,

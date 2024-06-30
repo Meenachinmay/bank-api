@@ -1,6 +1,3 @@
-#DB_SOURCE_TEST=postgres://postgres:password@localhost:5432/bankapitest?sslmode=disable
-#DB_SOURCE=postgres://postgres:password@localhost:5432/bankapi?sslmode=disable
-
 startdb:
 	docker run --name bank-postgres -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password -d postgres:16-alpine
 
@@ -25,11 +22,17 @@ dbmigrate:
 dbmigratedown:
 	cd sql && cd schema && goose postgres "${DB_SOURCE}" down
 
+dbreset:
+	dbmigratedown && dbmigratedown
+
 dbmigrate-test:
 	cd sql && cd schema && goose postgres "${DB_SOURCE_TEST}" up
 
 dbmigratedown-test:
 	cd sql && cd schema && goose postgres "${DB_SOURCE_TEST}" down
+
+dbresettest:
+	dbmigrate-test && dbmigratedown-test
 
 sqlc:
 	sqlc generate

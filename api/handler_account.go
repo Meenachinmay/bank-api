@@ -13,7 +13,7 @@ type createAccountRequest struct {
 	Owner     string    `json:"owner" binding:"required"`
 	Currency  string    `json:"currency" binding:"required,oneof=YEN EUR USD"`
 	Email     string    `json:"email" binding:"required,email"`
-	CreatedAt time.Time `json:"createdAt" binding:"required"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 func (server *Server) createAccount(ctx *gin.Context) {

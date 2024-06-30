@@ -15,7 +15,7 @@ const addAccountBalance = `-- name: AddAccountBalance :one
 UPDATE accounts
 SET balance = balance + $1
 WHERE id = $2
-RETURNING id, owner, email, extra_interest, interest, balance, currency, created_at
+RETURNING id, owner, email, extra_interest, extra_interest_start_date, extra_interest_duration, interest, balance, currency, created_at
 `
 
 type AddAccountBalanceParams struct {
@@ -31,6 +31,8 @@ func (q *Queries) AddAccountBalance(ctx context.Context, arg AddAccountBalancePa
 		&i.Owner,
 		&i.Email,
 		&i.ExtraInterest,
+		&i.ExtraInterestStartDate,
+		&i.ExtraInterestDuration,
 		&i.Interest,
 		&i.Balance,
 		&i.Currency,
@@ -42,7 +44,7 @@ func (q *Queries) AddAccountBalance(ctx context.Context, arg AddAccountBalancePa
 const createAccount = `-- name: CreateAccount :one
 INSERT INTO accounts (owner, balance, email, currency, created_at)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, owner, email, extra_interest, interest, balance, currency, created_at
+RETURNING id, owner, email, extra_interest, extra_interest_start_date, extra_interest_duration, interest, balance, currency, created_at
 `
 
 type CreateAccountParams struct {
@@ -67,6 +69,8 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (A
 		&i.Owner,
 		&i.Email,
 		&i.ExtraInterest,
+		&i.ExtraInterestStartDate,
+		&i.ExtraInterestDuration,
 		&i.Interest,
 		&i.Balance,
 		&i.Currency,
@@ -86,7 +90,7 @@ func (q *Queries) DeleteAccount(ctx context.Context, id int64) error {
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, owner, email, extra_interest, interest, balance, currency, created_at FROM accounts
+SELECT id, owner, email, extra_interest, extra_interest_start_date, extra_interest_duration, interest, balance, currency, created_at FROM accounts
 WHERE id = $1 LIMIT 1
 `
 
@@ -98,6 +102,8 @@ func (q *Queries) GetAccount(ctx context.Context, id int64) (Account, error) {
 		&i.Owner,
 		&i.Email,
 		&i.ExtraInterest,
+		&i.ExtraInterestStartDate,
+		&i.ExtraInterestDuration,
 		&i.Interest,
 		&i.Balance,
 		&i.Currency,
@@ -107,7 +113,7 @@ func (q *Queries) GetAccount(ctx context.Context, id int64) (Account, error) {
 }
 
 const getAccountForUpdate = `-- name: GetAccountForUpdate :one
-SELECT id, owner, email, extra_interest, interest, balance, currency, created_at FROM accounts
+SELECT id, owner, email, extra_interest, extra_interest_start_date, extra_interest_duration, interest, balance, currency, created_at FROM accounts
 WHERE id = $1 LIMIT 1
 FOR NO KEY UPDATE
 `
@@ -120,6 +126,8 @@ func (q *Queries) GetAccountForUpdate(ctx context.Context, id int64) (Account, e
 		&i.Owner,
 		&i.Email,
 		&i.ExtraInterest,
+		&i.ExtraInterestStartDate,
+		&i.ExtraInterestDuration,
 		&i.Interest,
 		&i.Balance,
 		&i.Currency,
@@ -129,7 +137,7 @@ func (q *Queries) GetAccountForUpdate(ctx context.Context, id int64) (Account, e
 }
 
 const listAccounts = `-- name: ListAccounts :many
-SELECT id, owner, email, extra_interest, interest, balance, currency, created_at FROM accounts
+SELECT id, owner, email, extra_interest, extra_interest_start_date, extra_interest_duration, interest, balance, currency, created_at FROM accounts
 ORDER BY id
 LIMIT $1
 OFFSET $2
@@ -154,6 +162,8 @@ func (q *Queries) ListAccounts(ctx context.Context, arg ListAccountsParams) ([]A
 			&i.Owner,
 			&i.Email,
 			&i.ExtraInterest,
+			&i.ExtraInterestStartDate,
+			&i.ExtraInterestDuration,
 			&i.Interest,
 			&i.Balance,
 			&i.Currency,
@@ -176,7 +186,7 @@ const updateAccount = `-- name: UpdateAccount :one
 UPDATE accounts
 SET balance = $2
 WHERE id = $1
-RETURNING id, owner, email, extra_interest, interest, balance, currency, created_at
+RETURNING id, owner, email, extra_interest, extra_interest_start_date, extra_interest_duration, interest, balance, currency, created_at
 `
 
 type UpdateAccountParams struct {
@@ -192,6 +202,8 @@ func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (A
 		&i.Owner,
 		&i.Email,
 		&i.ExtraInterest,
+		&i.ExtraInterestStartDate,
+		&i.ExtraInterestDuration,
 		&i.Interest,
 		&i.Balance,
 		&i.Currency,
@@ -202,24 +214,33 @@ func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (A
 
 const updateAccountInterest = `-- name: UpdateAccountInterest :one
 UPDATE accounts
-SET extra_interest = $2
+SET extra_interest = $2, extra_interest_start_date = $3, extra_interest_duration = $4
 WHERE id = $1
-RETURNING id, owner, email, extra_interest, interest, balance, currency, created_at
+RETURNING id, owner, email, extra_interest, extra_interest_start_date, extra_interest_duration, interest, balance, currency, created_at
 `
 
 type UpdateAccountInterestParams struct {
-	ID            int64           `json:"id"`
-	ExtraInterest sql.NullFloat64 `json:"extra_interest"`
+	ID                     int64           `json:"id"`
+	ExtraInterest          sql.NullFloat64 `json:"extra_interest"`
+	ExtraInterestStartDate sql.NullTime    `json:"extra_interest_start_date"`
+	ExtraInterestDuration  int32           `json:"extra_interest_duration"`
 }
 
 func (q *Queries) UpdateAccountInterest(ctx context.Context, arg UpdateAccountInterestParams) (Account, error) {
-	row := q.queryRow(ctx, q.updateAccountInterestStmt, updateAccountInterest, arg.ID, arg.ExtraInterest)
+	row := q.queryRow(ctx, q.updateAccountInterestStmt, updateAccountInterest,
+		arg.ID,
+		arg.ExtraInterest,
+		arg.ExtraInterestStartDate,
+		arg.ExtraInterestDuration,
+	)
 	var i Account
 	err := row.Scan(
 		&i.ID,
 		&i.Owner,
 		&i.Email,
 		&i.ExtraInterest,
+		&i.ExtraInterestStartDate,
+		&i.ExtraInterestDuration,
 		&i.Interest,
 		&i.Balance,
 		&i.Currency,

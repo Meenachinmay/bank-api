@@ -112,13 +112,11 @@ func addMoney(ctx context.Context, q *Queries, accountID1 int64, amount1 int64, 
 }
 
 type UseReferralCodeTxParams struct {
-	ReferralCode      string `json:"referral_code"`
-	ReferredAccountID int64  `json:"referred_account_id"`
+	ReferrerAccountID int64 `json:"referrer_account_id"`
 }
 
 type UseReferralCodeTxResult struct {
-	ReferralCode    ReferralCode    `json:"referral_code"`
-	ReferralHistory ReferralHistory `json:"referral_history"`
+	ReferrerAccountUpdate Account `json:"referrer_account"`
 }
 
 func (store *Store) UseReferralCodeTx(ctx context.Context, arg UseReferralCodeTxParams) (UseReferralCodeTxResult, error) {
@@ -126,7 +124,44 @@ func (store *Store) UseReferralCodeTx(ctx context.Context, arg UseReferralCodeTx
 
 	err := store.execTx(ctx, func(q *Queries) error {
 		var err error
-		result.ReferralCode, err = q.GetReferralCode(ctx, arg.ReferralCode)
+
+		// TODO: perform logic to give benefit to referrer_account_id
+		result.ReferrerAccountUpdate, err = q.GetAccountForUpdate(context.Background(), arg.ReferrerAccountID)
+		if err != nil {
+			return err
+		}
+
+		var currentExtraInterest, newExtraInterest float64
+		if result.ReferrerAccountUpdate.ExtraInterest.Valid {
+			currentExtraInterest = result.ReferrerAccountUpdate.ExtraInterest.Float64
+		}
+
+		loc, err := tz.LoadLocation("Asia/Tokyo")
+		if err != nil {
+			return err
+		}
+
+		currentDate := utils.ConvertToTokyoTime()
+		year, month, _ := currentDate.Date()
+
+		// Determine the date range for the previous month
+		var startDate, endDate time.Time
+		if month == time.January {
+			year--
+			startDate = time.Date(year, time.December, 21, 0, 0, 0, 0, loc)
+			endDate = time.Date(year, time.January, 20, 23, 59, 59, 0, loc)
+		} else {
+			startDate = time.Date(year, month-1, 21, 0, 0, 0, 0, loc)
+			endDate = time.Date(year, month, 20, 23, 59, 59, 0, loc)
+		}
+
+		args := GetReferralsByDateRangeParams{
+			ReferrerAccountID: result.ReferrerAccountUpdate.ID,
+			CreatedAt:         startDate,
+			CreatedAt_2:       endDate,
+		}
+
+		referralCount, err := q.GetReferralsByDateRange(ctx, args)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return fmt.Errorf("referral code not found")
@@ -134,31 +169,27 @@ func (store *Store) UseReferralCodeTx(ctx context.Context, arg UseReferralCodeTx
 			return err
 		}
 
-		if result.ReferralCode.IsUsed {
-			return fmt.Errorf("referral code already used")
+		// updating the new extra interest
+		if currentExtraInterest >= 10.0 {
+			newExtraInterest = currentExtraInterest
+		} else {
+			newExtraInterest = float64(referralCount) + currentExtraInterest
+			if newExtraInterest > 10.0 {
+				newExtraInterest = 10.0
+			}
 		}
 
-		result.ReferralCode, err = q.MarkReferralCodeUsed(ctx, MarkReferralCodeUsedParams{
-			ReferralCode: result.ReferralCode.ReferralCode,
-			UsedAt:       sql.NullTime{Time: utils.ConvertToTokyoTime(), Valid: true},
-		})
-		if err != nil {
-			return err
+		extraInterestStartDate := getFirstDayOfNextMonth(currentDate)
+
+		// update the new interest here
+		updateInterestArgs := UpdateAccountInterestParams{
+			ID:                     result.ReferrerAccountUpdate.ID,
+			ExtraInterest:          sql.NullFloat64{Float64: newExtraInterest, Valid: true},
+			ExtraInterestStartDate: sql.NullTime{Time: extraInterestStartDate, Valid: true},
+			ExtraInterestDuration:  9,
 		}
 
-		// TODO: update the referral history table
-		result.ReferralHistory, err = q.CreateReferralHistory(ctx, CreateReferralHistoryParams{
-			ReferrerAccountID: result.ReferralCode.ReferrerAccountID,
-			ReferredAccountID: arg.ReferredAccountID,
-			ReferralCodeID:    result.ReferralCode.ID,
-			ReferralDate:      result.ReferralCode.CreatedAt,
-		})
-		if err != nil {
-			return err
-		}
-
-		// TODO: perform logic to give benefit to referrer_account_id
-		err = store.updateExtraInterest(ctx, q, result.ReferralCode.ReferrerAccountID)
+		result.ReferrerAccountUpdate, err = q.UpdateAccountInterest(ctx, updateInterestArgs)
 		if err != nil {
 			return err
 		}
@@ -169,52 +200,18 @@ func (store *Store) UseReferralCodeTx(ctx context.Context, arg UseReferralCodeTx
 	return result, err
 }
 
-func (store *Store) updateExtraInterest(ctx context.Context, q *Queries, referrerAccountID int64) error {
-	account, err := q.GetAccountForUpdate(context.Background(), referrerAccountID)
-	if err != nil {
-		return err
+func getFirstDayOfNextMonth(currentDate time.Time) time.Time {
+	year, month, _ := currentDate.Date()
+	if month == time.December {
+		year++
+		month = time.January
+	} else {
+		month++
 	}
-
-	var currentExtraInterest, newExtraInterest float64
-	if account.ExtraInterest.Valid {
-		currentExtraInterest = account.ExtraInterest.Float64
-	}
-
-	currentDate := utils.ConvertToTokyoTime()
 	loc, err := tz.LoadLocation("Asia/Tokyo")
 	if err != nil {
-		return err
-	}
-	startDate := time.Date(currentDate.Year(), currentDate.Month()-1, 21, 0, 0, 0, 0, loc).AddDate(0, -1, 0)
-	endDate := time.Date(currentDate.Year(), currentDate.Month(), 20, 23, 59, 59, 0, loc)
-
-	args := GetReferralsByDateRangeParams{
-		ReferrerAccountID: referrerAccountID,
-		CreatedAt:         startDate,
-		CreatedAt_2:       endDate,
+		return time.Time{}
 	}
 
-	referralCount, err := q.GetReferralsByDateRange(ctx, args)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("referral code not found")
-		}
-		return err
-	}
-
-	// updating the new extra interest
-	if currentExtraInterest >= 10.0 {
-		newExtraInterest = currentExtraInterest
-	} else {
-		newExtraInterest = float64(referralCount)
-	}
-
-	// update the new interest here
-	updateInterestArgs := UpdateAccountInterestParams{
-		ID:            referrerAccountID,
-		ExtraInterest: sql.NullFloat64{Float64: newExtraInterest, Valid: true},
-	}
-	account, err = q.UpdateAccountInterest(ctx, updateInterestArgs)
-
-	return nil
+	return time.Date(year, month, 1, 0, 0, 0, 0, loc)
 }
