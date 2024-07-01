@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 	// Clean up the test database
 	_, err = testDB.Exec("TRUNCATE TABLE accounts, transfers, entries, referral_codes, referral_history RESTART IDENTITY CASCADE;")
 	if err != nil {
-		log.Fatal("failed to clean up test db:", err)
+		log.Fatal("failed to clean up test db:[TestMain-API]", err)
 	}
 
 	os.Exit(code)
