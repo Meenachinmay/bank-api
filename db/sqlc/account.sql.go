@@ -136,6 +136,29 @@ func (q *Queries) GetAccountForUpdate(ctx context.Context, id int64) (Account, e
 	return i, err
 }
 
+const getAccountWithEmail = `-- name: GetAccountWithEmail :one
+SELECT id, owner, email, extra_interest, extra_interest_start_date, extra_interest_duration, interest, balance, currency, created_at FROM accounts
+WHERE email = $1 LIMIT 1
+`
+
+func (q *Queries) GetAccountWithEmail(ctx context.Context, email string) (Account, error) {
+	row := q.queryRow(ctx, q.getAccountWithEmailStmt, getAccountWithEmail, email)
+	var i Account
+	err := row.Scan(
+		&i.ID,
+		&i.Owner,
+		&i.Email,
+		&i.ExtraInterest,
+		&i.ExtraInterestStartDate,
+		&i.ExtraInterestDuration,
+		&i.Interest,
+		&i.Balance,
+		&i.Currency,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listAccounts = `-- name: ListAccounts :many
 SELECT id, owner, email, extra_interest, extra_interest_start_date, extra_interest_duration, interest, balance, currency, created_at FROM accounts
 ORDER BY id

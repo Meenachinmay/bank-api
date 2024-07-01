@@ -8,6 +8,11 @@ SELECT * FROM referral_codes
 WHERE referral_code = $1
 LIMIT 1;
 
+-- name: GetReferralCodesForReferrerAccount :many
+SELECT * FROM referral_codes
+WHERE referrer_account_id = $1
+LIMIT 10;
+
 -- name: GetReferralsByDateRange :one
 SELECT COUNT(*) FROM referral_codes
     WHERE referrer_account_id = $1

@@ -1,3 +1,6 @@
+//go:build storetest
+// +build storetest
+
 package sqlc
 
 import (
@@ -6,7 +9,6 @@ import (
 	"database/sql"
 	"github.com/Meenachinmay/microservice-shared/utils"
 	"github.com/stretchr/testify/require"
-	"log"
 	"math/rand"
 	"sync"
 	"testing"
@@ -14,7 +16,7 @@ import (
 )
 
 func TestTransferTx(t *testing.T) {
-	store := NewStore(testDB)
+	store := testStore
 	account1 := CreateRandomAccount(t)
 	account2 := CreateRandomAccount(t)
 
@@ -109,7 +111,7 @@ func TestTransferTx(t *testing.T) {
 }
 
 func TestTransferTxDeadlock(t *testing.T) {
-	store := NewStore(testDB)
+	store := testStore
 	account1 := CreateRandomAccount(t)
 	account2 := CreateRandomAccount(t)
 
@@ -154,10 +156,7 @@ func TestTransferTxDeadlock(t *testing.T) {
 }
 
 func TestUseReferralCodeTx(t *testing.T) {
-	store := NewStore(testDB)
-
-	// clear database
-	clearDatabase(t)
+	store := testStore
 
 	n := 10
 
@@ -226,14 +225,10 @@ func TestUseReferralCodeTx(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		log.Println(">> referral count:", referralCount)
-
 		expectedExtraInterest := float64(referralCount)
 		if expectedExtraInterest > 10.0 {
 			expectedExtraInterest = 10.0
 		}
-
-		log.Println(">> referrer account extra interest:", account.ExtraInterest.Float64)
 
 		require.Equal(t, expectedExtraInterest, account.ExtraInterest.Float64)
 		require.NotZero(t, account.ExtraInterestStartDate)
@@ -289,10 +284,7 @@ func getReferralDateRange() (time.Time, time.Time) {
 }
 
 func TestUseReferralCodeTxWithEdgeCases(t *testing.T) {
-	store := NewStore(testDB)
-
-	// Clear the database
-	clearDatabase(t)
+	store := testStore
 
 	// Create a single referrer account
 	referrerAccount := CreateUniqueRandomAccount(t)

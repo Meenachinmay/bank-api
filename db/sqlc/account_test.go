@@ -19,11 +19,6 @@ var (
 	mu                sync.Mutex
 )
 
-func clearDatabase(t *testing.T) {
-	_, err := testDB.Exec("TRUNCATE TABLE accounts, referral_codes, referral_history RESTART IDENTITY CASCADE")
-	require.NoError(t, err)
-}
-
 func CreateUniqueRandomAccount(t *testing.T) Account {
 	mu.Lock()
 	defer mu.Unlock()
