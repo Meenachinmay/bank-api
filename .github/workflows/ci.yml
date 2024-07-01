@@ -65,5 +65,8 @@ jobs:
       - name: Tidy Go Modules
         run: go mod tidy
 
-      - name: Test
-        run: make test
+      - name: Test Store
+        run: go test -tags=storetest -v ./db/sqlc
+
+      - name: Test Handler
+        run: go test -tags=handlertest -v ./api

@@ -1,3 +1,6 @@
+//go:build handlertest
+// +build handlertest
+
 package api
 
 import (
@@ -324,8 +327,6 @@ func TestGetReferralCodesForAccount(t *testing.T) {
 		referralCodes[i] = CreateUniqueRandomReferralCode(t, account.ID)
 	}
 
-	log.Printf(">> referral codes: %+v\n", referralCodes)
-
 	server := newTestServer(t, testStore)
 	recorder := httptest.NewRecorder()
 	url := fmt.Sprintf("/referral-codes?account=%d", account.ID)
@@ -339,8 +340,6 @@ func TestGetReferralCodesForAccount(t *testing.T) {
 	var gotReferralCodes []sqlc.ReferralCode
 	err = json.Unmarshal(recorder.Body.Bytes(), &gotReferralCodes)
 	require.NoError(t, err)
-
-	log.Printf("got referral codes: %+v\n", gotReferralCodes)
 
 	require.Equal(t, len(referralCodes), len(gotReferralCodes))
 	for i := range referralCodes {
