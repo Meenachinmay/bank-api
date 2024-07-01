@@ -14,7 +14,7 @@ import (
 )
 
 func TestTransferTx(t *testing.T) {
-	store := NewStore(testDB)
+	store := testStore
 	account1 := CreateRandomAccount(t)
 	account2 := CreateRandomAccount(t)
 
@@ -109,7 +109,7 @@ func TestTransferTx(t *testing.T) {
 }
 
 func TestTransferTxDeadlock(t *testing.T) {
-	store := NewStore(testDB)
+	store := testStore
 	account1 := CreateRandomAccount(t)
 	account2 := CreateRandomAccount(t)
 
@@ -154,7 +154,7 @@ func TestTransferTxDeadlock(t *testing.T) {
 }
 
 func TestUseReferralCodeTx(t *testing.T) {
-	store := NewStore(testDB)
+	store := testStore
 
 	n := 10
 
@@ -286,7 +286,7 @@ func getReferralDateRange() (time.Time, time.Time) {
 }
 
 func TestUseReferralCodeTxWithEdgeCases(t *testing.T) {
-	store := NewStore(testDB)
+	store := testStore
 
 	// Create a single referrer account
 	referrerAccount := CreateUniqueRandomAccount(t)
