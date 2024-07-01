@@ -156,9 +156,6 @@ func TestTransferTxDeadlock(t *testing.T) {
 func TestUseReferralCodeTx(t *testing.T) {
 	store := NewStore(testDB)
 
-	// clear database
-	clearDatabase(t)
-
 	n := 10
 
 	referrerAccounts := make([]Account, n)
@@ -290,9 +287,6 @@ func getReferralDateRange() (time.Time, time.Time) {
 
 func TestUseReferralCodeTxWithEdgeCases(t *testing.T) {
 	store := NewStore(testDB)
-
-	// Clear the database
-	clearDatabase(t)
 
 	// Create a single referrer account
 	referrerAccount := CreateUniqueRandomAccount(t)
