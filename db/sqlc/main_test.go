@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 	//testDB, err = sql.Open("postgres", "postgres://postgres:password@localhost:5432/bankapitest?sslmode=disable")
 	//if err != nil {
 	//	log.Fatal("cannot connect to db:", err)
-	//}
+	//
 
 	util.SetupTestDB()
 	testDB = util.TestDB
