@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/Meenachinmay/microservice-shared/utils"
 	"github.com/stretchr/testify/require"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -149,6 +150,49 @@ func TestCreateAccount(t *testing.T) {
 	require.NotZero(t, createdAccount.CreatedAt)
 }
 
+func TestCreateAccountWithReferralCode(t *testing.T) {
+	account := CreateUniqueRandomAccount(t)
+	referralCode := CreateUniqueRandomReferralCode(t, account.ID)
+
+	server := newTestServer(t, testStore)
+
+	recorder := httptest.NewRecorder()
+	url := "/accounts"
+
+	// Define the request body
+	reqBody := createAccountRequest{
+		Owner:        "John Doe",
+		Currency:     "YEN",
+		Email:        "johndoe@example.com",
+		ReferralCode: referralCode.ReferralCode,
+	}
+	jsonReq, err := json.Marshal(reqBody)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonReq))
+	require.NoError(t, err)
+
+	server.router.ServeHTTP(recorder, request)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	var createdAccount sqlc.Account
+	err = json.Unmarshal(recorder.Body.Bytes(), &createdAccount)
+	require.NoError(t, err)
+
+	require.NotZero(t, createdAccount.ID)
+	require.Equal(t, "John Doe", createdAccount.Owner)
+	require.Equal(t, "YEN", createdAccount.Currency)
+	require.Equal(t, "johndoe@example.com", createdAccount.Email)
+	require.Equal(t, int64(1000), createdAccount.Balance)
+
+	// Check if the referral code is marked as used
+	usedReferralCode, err := server.store.GetReferralCode(context.Background(), referralCode.ReferralCode)
+	require.NoError(t, err)
+	require.True(t, usedReferralCode.IsUsed)
+	require.NotZero(t, usedReferralCode.UsedAt)
+}
+
 func TestGetAccount(t *testing.T) {
 	server := newTestServer(t, testStore)
 
@@ -206,7 +250,7 @@ func TestCreateReferral(t *testing.T) {
 	var referralCode sqlc.ReferralCode
 	err = json.Unmarshal(recorder.Body.Bytes(), &referralCode)
 	require.NoError(t, err)
-	require.NotEmpty(t, referralCode)
+	require.NotEmpty(t, referralCode.ReferralCode)
 	require.Equal(t, account.ID, referralCode.ReferrerAccountID)
 	require.Equal(t, false, referralCode.IsUsed)
 	require.NotZero(t, referralCode.ReferralCode)
@@ -238,4 +282,71 @@ func TestUseReferralCode(t *testing.T) {
 	require.Equal(t, referrerAccount.ID, result.ReferrerAccountID)
 	require.NotZero(t, result.UsedAt.Time)
 
+}
+
+func TestLoginAccount(t *testing.T) {
+	account := CreateUniqueRandomAccount(t)
+
+	log.Printf(">> account: %+v", account)
+
+	server := newTestServer(t, testStore)
+	loginReq := loginAccountRequest{
+		Email: account.Email,
+	}
+
+	recorder := httptest.NewRecorder()
+	url := fmt.Sprintf("/accounts/login")
+	jsonReq, err := json.Marshal(loginReq)
+	require.NoError(t, err)
+
+	log.Printf(">> json request: %+v", string(jsonReq))
+
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonReq))
+	require.NoError(t, err)
+
+	server.router.ServeHTTP(recorder, request)
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	var result sqlc.Account
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	require.NoError(t, err)
+
+	require.Equal(t, account.ID, result.ID)
+	require.Equal(t, account.Email, result.Email)
+	require.Equal(t, account.Currency, result.Currency)
+}
+
+func TestGetReferralCodesForAccount(t *testing.T) {
+	account := CreateUniqueRandomAccount(t)
+
+	referralCodes := make([]sqlc.ReferralCode, 4)
+	for i := 0; i < 4; i++ { // Changed <= to < to avoid index out of range error
+		referralCodes[i] = CreateUniqueRandomReferralCode(t, account.ID)
+	}
+
+	log.Printf(">> referral codes: %+v\n", referralCodes)
+
+	server := newTestServer(t, testStore)
+	recorder := httptest.NewRecorder()
+	url := fmt.Sprintf("/referral-codes?account=%d", account.ID)
+
+	request, err := http.NewRequest("GET", url, nil)
+	require.NoError(t, err)
+
+	server.router.ServeHTTP(recorder, request)
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	var gotReferralCodes []sqlc.ReferralCode
+	err = json.Unmarshal(recorder.Body.Bytes(), &gotReferralCodes)
+	require.NoError(t, err)
+
+	log.Printf("got referral codes: %+v\n", gotReferralCodes)
+
+	require.Equal(t, len(referralCodes), len(gotReferralCodes))
+	for i := range referralCodes {
+		require.Equal(t, referralCodes[i].ReferralCode, gotReferralCodes[i].ReferralCode)
+		require.Equal(t, referralCodes[i].ReferrerAccountID, gotReferralCodes[i].ReferrerAccountID)
+		require.Equal(t, referralCodes[i].IsUsed, gotReferralCodes[i].IsUsed)
+		require.WithinDuration(t, referralCodes[i].CreatedAt, gotReferralCodes[i].CreatedAt, time.Second)
+	}
 }

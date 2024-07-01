@@ -91,6 +91,42 @@ func (q *Queries) GetReferralCode(ctx context.Context, referralCode string) (Ref
 	return i, err
 }
 
+const getReferralCodesForReferrerAccount = `-- name: GetReferralCodesForReferrerAccount :many
+SELECT id, referral_code, referrer_account_id, is_used, created_at, used_at FROM referral_codes
+WHERE referrer_account_id = $1
+LIMIT 10
+`
+
+func (q *Queries) GetReferralCodesForReferrerAccount(ctx context.Context, referrerAccountID int64) ([]ReferralCode, error) {
+	rows, err := q.query(ctx, q.getReferralCodesForReferrerAccountStmt, getReferralCodesForReferrerAccount, referrerAccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ReferralCode{}
+	for rows.Next() {
+		var i ReferralCode
+		if err := rows.Scan(
+			&i.ID,
+			&i.ReferralCode,
+			&i.ReferrerAccountID,
+			&i.IsUsed,
+			&i.CreatedAt,
+			&i.UsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getReferralHistory = `-- name: GetReferralHistory :many
 SELECT id, referrer_account_id, referred_account_id, referral_code_id, referral_date, created_at FROM referral_history
 WHERE referrer_account_id = $1

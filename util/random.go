@@ -1,6 +1,7 @@
 package util
 
 import (
+	"github.com/google/uuid"
 	"math/rand"
 	"strings"
 	"time"
@@ -57,4 +58,9 @@ func RandomEmail() string {
 	user := generateRandomString(8)
 	domain := generateRandomString(5)
 	return user + "@" + domain + ".com"
+}
+
+// RandomUUID generates a random UUID and returns it as a string.
+func RandomUUID() string {
+	return uuid.New().String()
 }

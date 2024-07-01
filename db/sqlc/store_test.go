@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"github.com/Meenachinmay/microservice-shared/utils"
 	"github.com/stretchr/testify/require"
-	"log"
 	"math/rand"
 	"sync"
 	"testing"
@@ -223,14 +222,10 @@ func TestUseReferralCodeTx(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		log.Println(">> referral count:", referralCount)
-
 		expectedExtraInterest := float64(referralCount)
 		if expectedExtraInterest > 10.0 {
 			expectedExtraInterest = 10.0
 		}
-
-		log.Println(">> referrer account extra interest:", account.ExtraInterest.Float64)
 
 		require.Equal(t, expectedExtraInterest, account.ExtraInterest.Float64)
 		require.NotZero(t, account.ExtraInterestStartDate)

@@ -51,11 +51,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getAccountForUpdateStmt, err = db.PrepareContext(ctx, getAccountForUpdate); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAccountForUpdate: %w", err)
 	}
+	if q.getAccountWithEmailStmt, err = db.PrepareContext(ctx, getAccountWithEmail); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAccountWithEmail: %w", err)
+	}
 	if q.getEntryStmt, err = db.PrepareContext(ctx, getEntry); err != nil {
 		return nil, fmt.Errorf("error preparing query GetEntry: %w", err)
 	}
 	if q.getReferralCodeStmt, err = db.PrepareContext(ctx, getReferralCode); err != nil {
 		return nil, fmt.Errorf("error preparing query GetReferralCode: %w", err)
+	}
+	if q.getReferralCodesForReferrerAccountStmt, err = db.PrepareContext(ctx, getReferralCodesForReferrerAccount); err != nil {
+		return nil, fmt.Errorf("error preparing query GetReferralCodesForReferrerAccount: %w", err)
 	}
 	if q.getReferralHistoryStmt, err = db.PrepareContext(ctx, getReferralHistory); err != nil {
 		return nil, fmt.Errorf("error preparing query GetReferralHistory: %w", err)
@@ -140,6 +146,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getAccountForUpdateStmt: %w", cerr)
 		}
 	}
+	if q.getAccountWithEmailStmt != nil {
+		if cerr := q.getAccountWithEmailStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAccountWithEmailStmt: %w", cerr)
+		}
+	}
 	if q.getEntryStmt != nil {
 		if cerr := q.getEntryStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getEntryStmt: %w", cerr)
@@ -148,6 +159,11 @@ func (q *Queries) Close() error {
 	if q.getReferralCodeStmt != nil {
 		if cerr := q.getReferralCodeStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getReferralCodeStmt: %w", cerr)
+		}
+	}
+	if q.getReferralCodesForReferrerAccountStmt != nil {
+		if cerr := q.getReferralCodesForReferrerAccountStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getReferralCodesForReferrerAccountStmt: %w", cerr)
 		}
 	}
 	if q.getReferralHistoryStmt != nil {
@@ -242,57 +258,61 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                           DBTX
-	tx                           *sql.Tx
-	addAccountBalanceStmt        *sql.Stmt
-	createAccountStmt            *sql.Stmt
-	createEntryStmt              *sql.Stmt
-	createReferralCodeStmt       *sql.Stmt
-	createReferralHistoryStmt    *sql.Stmt
-	createTransferStmt           *sql.Stmt
-	deleteAccountStmt            *sql.Stmt
-	getAccountStmt               *sql.Stmt
-	getAccountForUpdateStmt      *sql.Stmt
-	getEntryStmt                 *sql.Stmt
-	getReferralCodeStmt          *sql.Stmt
-	getReferralHistoryStmt       *sql.Stmt
-	getReferralHistoryByDateStmt *sql.Stmt
-	getReferralsByDateRangeStmt  *sql.Stmt
-	getTransferStmt              *sql.Stmt
-	getUnusedReferralCodesStmt   *sql.Stmt
-	listAccountsStmt             *sql.Stmt
-	listEntriesStmt              *sql.Stmt
-	listTransfersStmt            *sql.Stmt
-	markReferralCodeUsedStmt     *sql.Stmt
-	updateAccountStmt            *sql.Stmt
-	updateAccountInterestStmt    *sql.Stmt
+	db                                     DBTX
+	tx                                     *sql.Tx
+	addAccountBalanceStmt                  *sql.Stmt
+	createAccountStmt                      *sql.Stmt
+	createEntryStmt                        *sql.Stmt
+	createReferralCodeStmt                 *sql.Stmt
+	createReferralHistoryStmt              *sql.Stmt
+	createTransferStmt                     *sql.Stmt
+	deleteAccountStmt                      *sql.Stmt
+	getAccountStmt                         *sql.Stmt
+	getAccountForUpdateStmt                *sql.Stmt
+	getAccountWithEmailStmt                *sql.Stmt
+	getEntryStmt                           *sql.Stmt
+	getReferralCodeStmt                    *sql.Stmt
+	getReferralCodesForReferrerAccountStmt *sql.Stmt
+	getReferralHistoryStmt                 *sql.Stmt
+	getReferralHistoryByDateStmt           *sql.Stmt
+	getReferralsByDateRangeStmt            *sql.Stmt
+	getTransferStmt                        *sql.Stmt
+	getUnusedReferralCodesStmt             *sql.Stmt
+	listAccountsStmt                       *sql.Stmt
+	listEntriesStmt                        *sql.Stmt
+	listTransfersStmt                      *sql.Stmt
+	markReferralCodeUsedStmt               *sql.Stmt
+	updateAccountStmt                      *sql.Stmt
+	updateAccountInterestStmt              *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                           tx,
-		tx:                           tx,
-		addAccountBalanceStmt:        q.addAccountBalanceStmt,
-		createAccountStmt:            q.createAccountStmt,
-		createEntryStmt:              q.createEntryStmt,
-		createReferralCodeStmt:       q.createReferralCodeStmt,
-		createReferralHistoryStmt:    q.createReferralHistoryStmt,
-		createTransferStmt:           q.createTransferStmt,
-		deleteAccountStmt:            q.deleteAccountStmt,
-		getAccountStmt:               q.getAccountStmt,
-		getAccountForUpdateStmt:      q.getAccountForUpdateStmt,
-		getEntryStmt:                 q.getEntryStmt,
-		getReferralCodeStmt:          q.getReferralCodeStmt,
-		getReferralHistoryStmt:       q.getReferralHistoryStmt,
-		getReferralHistoryByDateStmt: q.getReferralHistoryByDateStmt,
-		getReferralsByDateRangeStmt:  q.getReferralsByDateRangeStmt,
-		getTransferStmt:              q.getTransferStmt,
-		getUnusedReferralCodesStmt:   q.getUnusedReferralCodesStmt,
-		listAccountsStmt:             q.listAccountsStmt,
-		listEntriesStmt:              q.listEntriesStmt,
-		listTransfersStmt:            q.listTransfersStmt,
-		markReferralCodeUsedStmt:     q.markReferralCodeUsedStmt,
-		updateAccountStmt:            q.updateAccountStmt,
-		updateAccountInterestStmt:    q.updateAccountInterestStmt,
+		db:                                     tx,
+		tx:                                     tx,
+		addAccountBalanceStmt:                  q.addAccountBalanceStmt,
+		createAccountStmt:                      q.createAccountStmt,
+		createEntryStmt:                        q.createEntryStmt,
+		createReferralCodeStmt:                 q.createReferralCodeStmt,
+		createReferralHistoryStmt:              q.createReferralHistoryStmt,
+		createTransferStmt:                     q.createTransferStmt,
+		deleteAccountStmt:                      q.deleteAccountStmt,
+		getAccountStmt:                         q.getAccountStmt,
+		getAccountForUpdateStmt:                q.getAccountForUpdateStmt,
+		getAccountWithEmailStmt:                q.getAccountWithEmailStmt,
+		getEntryStmt:                           q.getEntryStmt,
+		getReferralCodeStmt:                    q.getReferralCodeStmt,
+		getReferralCodesForReferrerAccountStmt: q.getReferralCodesForReferrerAccountStmt,
+		getReferralHistoryStmt:                 q.getReferralHistoryStmt,
+		getReferralHistoryByDateStmt:           q.getReferralHistoryByDateStmt,
+		getReferralsByDateRangeStmt:            q.getReferralsByDateRangeStmt,
+		getTransferStmt:                        q.getTransferStmt,
+		getUnusedReferralCodesStmt:             q.getUnusedReferralCodesStmt,
+		listAccountsStmt:                       q.listAccountsStmt,
+		listEntriesStmt:                        q.listEntriesStmt,
+		listTransfersStmt:                      q.listTransfersStmt,
+		markReferralCodeUsedStmt:               q.markReferralCodeUsedStmt,
+		updateAccountStmt:                      q.updateAccountStmt,
+		updateAccountInterestStmt:              q.updateAccountInterestStmt,
 	}
 }

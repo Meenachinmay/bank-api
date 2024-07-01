@@ -2,10 +2,13 @@ package api
 
 import (
 	"bank-api/db/sqlc"
+	"bank-api/util"
 	"database/sql"
+	"errors"
 	"github.com/Meenachinmay/microservice-shared/utils"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 )
 
 type generateReferralRequest struct {
@@ -23,8 +26,9 @@ func (server *Server) createReferral(ctx *gin.Context) {
 		return
 	}
 
+	referral := util.RandomUUID()
 	arg := sqlc.CreateReferralCodeParams{
-		ReferralCode:      "uniqueCodeA",
+		ReferralCode:      referral,
 		ReferrerAccountID: req.ID,
 		CreatedAt:         utils.ConvertToTokyoTime(),
 	}
@@ -113,6 +117,8 @@ type calculateReferralRequest struct {
 	ReferrerAccountID int64 `uri:"account" binding:"required,min=1"`
 }
 
+// CalculateInterest - This method runs on 21st of every month to calculate extra interest for
+// following month
 func (server *Server) calculateInterest(ctx *gin.Context) {
 	var req calculateReferralRequest
 	if err := ctx.ShouldBindUri(&req); err != nil {
@@ -132,4 +138,34 @@ func (server *Server) calculateInterest(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, txResult.ReferrerAccountUpdate)
 
+}
+
+func (server *Server) getReferralCodesForAccount(ctx *gin.Context) {
+	accountIDStr := ctx.Query("account")
+	if accountIDStr == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "query params are missing",
+		})
+		return
+	}
+
+	accountID, err := strconv.ParseInt(accountIDStr, 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, errors.New("invalid account id"))
+		return
+	}
+
+	referralCodes, err := server.store.GetReferralCodesForReferrerAccount(ctx, accountID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			ctx.JSON(http.StatusNotFound, gin.H{
+				"error": "no referral codes are available",
+			})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, referralCodes)
 }
