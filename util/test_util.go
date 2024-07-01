@@ -20,7 +20,12 @@ func SetupTestDB() {
 
 func CleanupTestDB() {
 	cleanupDB()
-	TestDB.Close()
+	if TestDB != nil {
+		err := TestDB.Close()
+		if err != nil {
+			log.Printf("failed to close test db: %v", err)
+		}
+	}
 }
 
 func cleanupDB() {
@@ -31,6 +36,6 @@ func cleanupDB() {
 
 	_, err = TestDB.Exec("TRUNCATE TABLE accounts, transfers, entries, referral_codes, referral_history RESTART IDENTITY CASCADE;")
 	if err != nil {
-		log.Fatalf("failed to clean up test db[util.test_util.go]: %v", err)
+		log.Fatalf("failed to clean up test db: %v", err)
 	}
 }
