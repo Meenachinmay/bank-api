@@ -1,6 +1,3 @@
-//go:build storetest
-// +build storetest
-
 package sqlc
 
 import (

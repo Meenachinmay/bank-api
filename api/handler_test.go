@@ -1,6 +1,3 @@
-//go:build handlertest
-// +build handlertest
-
 package api
 
 import (
@@ -363,10 +360,8 @@ func TestUserCannotCreateANewReferralCodeBeforeUsingTheCurrentOne(t *testing.T) 
 		CreatedAt:         utils.ConvertToTokyoTime(),
 	}
 
-	referralCodeCreatedForTesting, err := testStore.CreateReferralCode(context.Background(), arg)
+	_, err := testStore.CreateReferralCode(context.Background(), arg)
 	require.NoError(t, err)
-
-	log.Printf(">>> code %+v\n", referralCodeCreatedForTesting)
 
 	// try to create a new code before using above one
 	recorder := httptest.NewRecorder()
@@ -391,7 +386,6 @@ func TestUserCannotCreateANewReferralCodeBeforeUsingTheCurrentOne(t *testing.T) 
 	usedCode, err := testStore.MarkReferralCodeUsed(context.Background(), args)
 	require.NoError(t, err)
 
-	log.Printf(">>> referral code used: %+v", usedCode)
 	require.Equal(t, code, usedCode.ReferralCode)
 	require.Equal(t, account.ID, usedCode.ReferrerAccountID)
 

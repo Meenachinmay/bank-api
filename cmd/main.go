@@ -9,11 +9,11 @@ import (
 )
 
 const (
-	serverAddress = ":4000"
+	serverAddress = ":8080"
 )
 
 func main() {
-	conn, err := sql.Open("postgres", "postgres://postgres:password@localhost:5432/bankapi?sslmode=disable")
+	conn, err := sql.Open("postgres", "postgres://postgres:password@postgres:5432/bankapi?sslmode=disable")
 	if err != nil {
 		log.Fatal("cannot connect to db:", err)
 	}
