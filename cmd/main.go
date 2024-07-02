@@ -32,7 +32,7 @@ func main() {
 }
 
 func openDB() (*sql.DB, error) {
-	dbURL := os.Getenv("DB_SOURCE")
+	dbURL := os.Getenv("DB_SOURCE_PROD")
 	if dbURL == "" {
 		return nil, errors.New("missing DATABASE_URL")
 	}
