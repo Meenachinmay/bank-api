@@ -1,22 +1,8 @@
 version: '3'
 
 services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    restart: always
-    env_file:
-      - ./.env
-    environment:
-      - DB_SOURCE=${DB_SOURCE}
-      - DB_SOURCE_TEST=${DB_SOURCE_TEST}
-    depends_on:
-      - postgres
-
   postgres:
+    container_name: bank-postgres
     image: 'postgres:16.3-alpine'
     ports:
       - "5432:5432"
@@ -37,3 +23,17 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DB_SOURCE=${DB_SOURCE}
+      - DB_SOURCE_TEST=${DB_SOURCE_TEST}
+    depends_on:
+      - postgres

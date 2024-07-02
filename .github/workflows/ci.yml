@@ -50,20 +50,11 @@ jobs:
           done
           pg_isready -h 127.0.0.1 -p 5432 -U postgres
 
-      - name: Creating env file
-        run : |
-          echo "DB_SOURCE=${{ secrets.DB_SOURCE }}" >> .env
-          echo "DB_SOURCE_TEST=${{ secrets.DB_SOURCE_TEST }}" >> .env
-          echo "DB_DRIVER=${{ secrets.DB_DRIVER }}" >> .env
-          echo "SERVER_ADDRESS=8080" >> .env
-
-      - name: Load environment variables
+      - name: Set Environment Variables
         run: |
-          export $(grep -v '^#' .env | xargs)
-          echo "DB_SOURCE=$DB_SOURCE" >> $GITHUB_ENV
-          echo "DB_SOURCE_TEST=$DB_SOURCE_TEST" >> $GITHUB_ENV
-          echo "DB_DRIVER=$DB_DRIVER" >> $GITHUB_ENV
-          echo "SERVER_ADDRESS=$SERVER_ADDRESS" >> $GITHUB_ENV
+          echo "DB_SOURCE=${{ secrets.DB_SOURCE }}" >> $GITHUB_ENV
+          echo "DB_SOURCE_TEST=${{ secrets.DB_SOURCE_TEST }}" >> $GITHUB_ENV
+          echo "DB_DRIVER=${{ secrets.DB_DRIVER }}" >> $GITHUB_ENV
 
       - name: Create Test Database
         run: make createdb
@@ -79,4 +70,3 @@ jobs:
 
       - name: Test Handler
         run: go test -tags=handlertest -v ./api
-
