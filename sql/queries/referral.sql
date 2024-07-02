@@ -13,6 +13,14 @@ SELECT * FROM referral_codes
 WHERE referrer_account_id = $1
 LIMIT 10;
 
+-- name: HasUnUsedCodeForReferrerAccount :one
+SELECT EXISTS (
+    SELECT 1
+    FROM referral_codes
+    WHERE referrer_account_id = $1
+      AND is_used = false
+);
+
 -- name: GetReferralsByDateRange :one
 SELECT COUNT(*) FROM referral_codes
     WHERE referrer_account_id = $1

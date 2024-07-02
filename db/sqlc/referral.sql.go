@@ -23,6 +23,10 @@ type CreateReferralCodeParams struct {
 	CreatedAt         time.Time `json:"created_at"`
 }
 
+type CreateReferralCodeErrorMsg struct {
+	ErrorMessage string `json:"error"`
+}
+
 func (q *Queries) CreateReferralCode(ctx context.Context, arg CreateReferralCodeParams) (ReferralCode, error) {
 	row := q.queryRow(ctx, q.createReferralCodeStmt, createReferralCode, arg.ReferralCode, arg.ReferrerAccountID, arg.CreatedAt)
 	var i ReferralCode
@@ -267,6 +271,22 @@ func (q *Queries) GetUnusedReferralCodes(ctx context.Context, arg GetUnusedRefer
 		return nil, err
 	}
 	return items, nil
+}
+
+const hasUnUsedCodeForReferrerAccount = `-- name: HasUnUsedCodeForReferrerAccount :one
+SELECT EXISTS (
+    SELECT 1
+    FROM referral_codes
+    WHERE referrer_account_id = $1
+      AND is_used = false
+)
+`
+
+func (q *Queries) HasUnUsedCodeForReferrerAccount(ctx context.Context, referrerAccountID int64) (bool, error) {
+	row := q.queryRow(ctx, q.hasUnUsedCodeForReferrerAccountStmt, hasUnUsedCodeForReferrerAccount, referrerAccountID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const markReferralCodeUsed = `-- name: MarkReferralCodeUsed :one

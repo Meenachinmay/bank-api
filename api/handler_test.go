@@ -9,6 +9,7 @@ import (
 	"bank-api/util"
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/Meenachinmay/microservice-shared/utils"
@@ -348,4 +349,64 @@ func TestGetReferralCodesForAccount(t *testing.T) {
 		require.Equal(t, referralCodes[i].IsUsed, gotReferralCodes[i].IsUsed)
 		require.WithinDuration(t, referralCodes[i].CreatedAt, gotReferralCodes[i].CreatedAt, time.Second)
 	}
+}
+
+// Test to confirm that a user cannot create a new code before using previous one
+func TestUserCannotCreateANewReferralCodeBeforeUsingTheCurrentOne(t *testing.T) {
+	account := CreateUniqueRandomAccount(t)
+	server := newTestServer(t, testStore)
+
+	code := util.RandomUUID()
+	arg := sqlc.CreateReferralCodeParams{
+		ReferrerAccountID: account.ID,
+		ReferralCode:      code,
+		CreatedAt:         utils.ConvertToTokyoTime(),
+	}
+
+	referralCodeCreatedForTesting, err := testStore.CreateReferralCode(context.Background(), arg)
+	require.NoError(t, err)
+
+	log.Printf(">>> code %+v\n", referralCodeCreatedForTesting)
+
+	// try to create a new code before using above one
+	recorder := httptest.NewRecorder()
+	url := fmt.Sprintf("/referral/account/%d", account.ID)
+	request, err := http.NewRequest("POST", url, nil)
+	require.NoError(t, err)
+
+	server.router.ServeHTTP(recorder, request)
+	require.Equal(t, http.StatusUnprocessableEntity, recorder.Code)
+
+	var errorMessage sqlc.CreateReferralCodeErrorMsg
+	err = json.Unmarshal(recorder.Body.Bytes(), &errorMessage)
+	require.NoError(t, err)
+
+	require.Equal(t, errorMessage.ErrorMessage, "cannot create a new code, before using it")
+
+	// use the existing code now
+	args := sqlc.MarkReferralCodeUsedParams{
+		ReferralCode: code,
+		UsedAt:       sql.NullTime{Time: utils.ConvertToTokyoTime(), Valid: true},
+	}
+	usedCode, err := testStore.MarkReferralCodeUsed(context.Background(), args)
+	require.NoError(t, err)
+
+	log.Printf(">>> referral code used: %+v", usedCode)
+	require.Equal(t, code, usedCode.ReferralCode)
+	require.Equal(t, account.ID, usedCode.ReferrerAccountID)
+
+	// try to create a new code now
+	recorder = httptest.NewRecorder()
+	request, err = http.NewRequest("POST", url, nil)
+	require.NoError(t, err)
+
+	server.router.ServeHTTP(recorder, request)
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	var newReferralCode sqlc.ReferralCode
+	err = json.Unmarshal(recorder.Body.Bytes(), &newReferralCode)
+	require.NoError(t, err)
+	require.NotEmpty(t, newReferralCode)
+	require.Equal(t, account.ID, newReferralCode.ReferrerAccountID)
+	require.False(t, newReferralCode.IsUsed)
 }

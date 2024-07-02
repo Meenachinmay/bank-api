@@ -26,6 +26,20 @@ func (server *Server) createReferral(ctx *gin.Context) {
 		return
 	}
 
+	//TODO: Check for any un-used code by this user.
+	hasUnUsedCode, err := server.store.HasUnUsedCodeForReferrerAccount(ctx, req.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	if hasUnUsedCode {
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": "cannot create a new code, before using it",
+		})
+		return
+	}
+
 	referral := util.RandomUUID()
 	arg := sqlc.CreateReferralCodeParams{
 		ReferralCode:      referral,
@@ -103,12 +117,6 @@ func (server *Server) useReferralCode(ctx *gin.Context) {
 		expectedExtraInterest = 10.0
 	}
 
-	//ctx.JSON(http.StatusOK, gin.H{
-	//	"message":                 "Referral code used successfully",
-	//	"current_extra_interest":  currentExtraInterest,
-	//	"expected_extra_interest": expectedExtraInterest,
-	//	"referralCode":            referralCode.ReferralCode,
-	//})
 	ctx.JSON(http.StatusOK, referralCode)
 
 }

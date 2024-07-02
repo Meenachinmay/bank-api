@@ -78,6 +78,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getUnusedReferralCodesStmt, err = db.PrepareContext(ctx, getUnusedReferralCodes); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUnusedReferralCodes: %w", err)
 	}
+	if q.hasUnUsedCodeForReferrerAccountStmt, err = db.PrepareContext(ctx, hasUnUsedCodeForReferrerAccount); err != nil {
+		return nil, fmt.Errorf("error preparing query HasUnUsedCodeForReferrerAccount: %w", err)
+	}
 	if q.listAccountsStmt, err = db.PrepareContext(ctx, listAccounts); err != nil {
 		return nil, fmt.Errorf("error preparing query ListAccounts: %w", err)
 	}
@@ -191,6 +194,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getUnusedReferralCodesStmt: %w", cerr)
 		}
 	}
+	if q.hasUnUsedCodeForReferrerAccountStmt != nil {
+		if cerr := q.hasUnUsedCodeForReferrerAccountStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing hasUnUsedCodeForReferrerAccountStmt: %w", cerr)
+		}
+	}
 	if q.listAccountsStmt != nil {
 		if cerr := q.listAccountsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listAccountsStmt: %w", cerr)
@@ -278,6 +286,7 @@ type Queries struct {
 	getReferralsByDateRangeStmt            *sql.Stmt
 	getTransferStmt                        *sql.Stmt
 	getUnusedReferralCodesStmt             *sql.Stmt
+	hasUnUsedCodeForReferrerAccountStmt    *sql.Stmt
 	listAccountsStmt                       *sql.Stmt
 	listEntriesStmt                        *sql.Stmt
 	listTransfersStmt                      *sql.Stmt
@@ -308,6 +317,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getReferralsByDateRangeStmt:            q.getReferralsByDateRangeStmt,
 		getTransferStmt:                        q.getTransferStmt,
 		getUnusedReferralCodesStmt:             q.getUnusedReferralCodesStmt,
+		hasUnUsedCodeForReferrerAccountStmt:    q.hasUnUsedCodeForReferrerAccountStmt,
 		listAccountsStmt:                       q.listAccountsStmt,
 		listEntriesStmt:                        q.listEntriesStmt,
 		listTransfersStmt:                      q.listTransfersStmt,
