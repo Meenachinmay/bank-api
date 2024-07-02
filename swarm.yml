@@ -1,15 +1,16 @@
-version: '3'
+version: "3"
 
 services:
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: startup2023/bank-api
     ports:
       - "8080:8080"
+    deploy:
+      mode: replicated
+      replicas: 1
     restart: always
     env_file:
-      - ./.env
+      - .env
     environment:
       - DB_SOURCE=${DB_SOURCE}
       - DB_SOURCE_TEST=${DB_SOURCE_TEST}
@@ -17,6 +18,7 @@ services:
       - postgres
 
   postgres:
+    container_name: bank-postgres
     image: 'postgres:16.3-alpine'
     ports:
       - "5432:5432"
@@ -36,4 +38,3 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-

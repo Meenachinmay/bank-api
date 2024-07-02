@@ -78,29 +78,3 @@ jobs:
       - name: Test Handler
         run: go test -tags=handlertest -v ./api
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build Docker image
-        run: |
-          docker build -t bankapi:latest .
-
-      - name: Tag docker image
-        run: |
-          REPOSITORY_URI="${{ secrets.ECR_REPOSITORY_URI }}"
-          IMAGE_TAG="${GITHUB_SHA}"
-          docker tag bankapi:latest $REPOSITORY_URI:$IMAGE_TAG
-
-      - name: Push to Amazon ECR
-        run: |
-          REPOSITORY_URI="${{ secrets.ECR_REPOSITORY_URI }}"
-          IMAGE_TAG="${GITHUB_SHA}"
-          docker push $REPOSITORY_URI:$IMAGE_TAG

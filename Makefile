@@ -69,3 +69,7 @@ down:
 	@echo "Stopping docker compose..."
 	docker-compose down
 	@echo "Done!"
+
+
+se:
+	export $(grep -v '^#' .env | xargs)
