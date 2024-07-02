@@ -34,6 +34,9 @@ func main() {
 func openDB() (*sql.DB, error) {
 	dbURL := os.Getenv("DB_SOURCE_PROD")
 	if dbURL == "" {
+		dbURL = os.Getenv("DB_SOURCE")
+	}
+	if dbURL == "" {
 		return nil, errors.New("missing DATABASE_URL")
 	}
 

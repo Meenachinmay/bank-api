@@ -38,13 +38,13 @@ sqlc:
 	sqlc generate
 
 test:
-	DB_SOURCE=${DB_SOURCE_TEST} go test -v -cover ./...
+	DB_SOURCE=${DB_SOURCE_TEST} go test -v -count=1 -cover ./...
 
 store-test:
-	DB_SOURCE=${DB_SOURCE_TEST}	go test -tags=storetest -v ./db/sqlc
+	DB_SOURCE=${DB_SOURCE_TEST}	go test -tags=storetest -v -count=1 ./db/sqlc
 
 handler-test:
-	DB_SOURCE=${DB_SOURCE_TEST}	go test -tags=handlertest -v ./api
+	DB_SOURCE=${DB_SOURCE_TEST}	go test -tags=handlertest -v -count=1 ./api
 
 server:
 	go run cmd/main.go

@@ -69,7 +69,9 @@ jobs:
         run: go mod tidy
 
       - name: Test Store
-        run: go test -tags=storetest -v ./db/sqlc
+        run: make store-test
+#        run: go test -tags=storetest -v ./db/sqlc
 
       - name: Test Handler
-        run: go test -tags=handlertest -v ./api
+        run: make handler-test
+#        run: go test -tags=handlertest -v ./api

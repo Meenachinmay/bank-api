@@ -12,7 +12,7 @@ services:
     env_file:
       - .env
     environment:
-      - DB_SOURCE=${DB_SOURCE}
+      - DB_SOURCE_PROD=${DB_SOURCE_PROD}
       - DB_SOURCE_TEST=${DB_SOURCE_TEST}
     depends_on:
       - postgres
