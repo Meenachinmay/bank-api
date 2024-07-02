@@ -230,9 +230,17 @@ func TestUseReferralCodeTx(t *testing.T) {
 			expectedExtraInterest = 10.0
 		}
 
-		require.Equal(t, expectedExtraInterest, account.ExtraInterest.Float64)
-		require.NotZero(t, account.ExtraInterestStartDate)
-		require.Equal(t, int32(9), account.ExtraInterestDuration)
+		if expectedExtraInterest == 0 {
+			require.Equal(t, expectedExtraInterest, account.ExtraInterest.Float64)
+			require.Equal(t, int32(9), account.ExtraInterestDuration)
+		}
+
+		if referralCount != 0 {
+			require.Equal(t, expectedExtraInterest, account.ExtraInterest.Float64)
+			require.NotZero(t, account.ExtraInterestStartDate)
+			require.Equal(t, int32(9), account.ExtraInterestDuration)
+		}
+
 	}
 }
 

@@ -170,28 +170,36 @@ func (store *Store) UseReferralCodeTx(ctx context.Context, arg UseReferralCodeTx
 		}
 
 		// updating the new extra interest
-		if currentExtraInterest >= 10.0 {
-			newExtraInterest = currentExtraInterest
-		} else {
-			newExtraInterest = float64(referralCount) + currentExtraInterest
-			if newExtraInterest > 10.0 {
-				newExtraInterest = 10.0
+		if referralCount > 0 {
+			if currentExtraInterest >= 10.0 {
+				newExtraInterest = currentExtraInterest
+			} else {
+				if referralCount == int64(currentExtraInterest) {
+					newExtraInterest = currentExtraInterest
+				} else {
+					newExtraInterest = float64(referralCount)
+					if newExtraInterest > 10.0 {
+						newExtraInterest = 10.0
+					}
+				}
 			}
-		}
 
-		extraInterestStartDate := getFirstDayOfNextMonth(currentDate)
+			extraInterestStartDate := getFirstDayOfNextMonth(currentDate)
 
-		// update the new interest here
-		updateInterestArgs := UpdateAccountInterestParams{
-			ID:                     result.ReferrerAccountUpdate.ID,
-			ExtraInterest:          sql.NullFloat64{Float64: newExtraInterest, Valid: true},
-			ExtraInterestStartDate: sql.NullTime{Time: extraInterestStartDate, Valid: true},
-			ExtraInterestDuration:  9,
-		}
+			if newExtraInterest > 0 {
+				// update the new interest here
+				updateInterestArgs := UpdateAccountInterestParams{
+					ID:                     result.ReferrerAccountUpdate.ID,
+					ExtraInterest:          sql.NullFloat64{Float64: newExtraInterest, Valid: true},
+					ExtraInterestStartDate: sql.NullTime{Time: extraInterestStartDate, Valid: true},
+					ExtraInterestDuration:  9,
+				}
 
-		result.ReferrerAccountUpdate, err = q.UpdateAccountInterest(ctx, updateInterestArgs)
-		if err != nil {
-			return err
+				result.ReferrerAccountUpdate, err = q.UpdateAccountInterest(ctx, updateInterestArgs)
+				if err != nil {
+					return err
+				}
+			}
 		}
 
 		return nil

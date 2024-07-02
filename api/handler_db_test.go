@@ -16,7 +16,7 @@ func TestMain(m *testing.M) {
 	testStore = sqlc.NewStore(util.TestDB)
 
 	code := m.Run()
-	//util.CleanupTestDB()
+	util.CleanupTestDB()
 
 	os.Exit(code)
 }
