@@ -56,6 +56,13 @@ jobs:
           echo "DB_SOURCE_TEST=${{ secrets.DB_SOURCE_TEST }}" >> $GITHUB_ENV
           echo "DB_DRIVER=${{ secrets.DB_DRIVER }}" >> $GITHUB_ENV
 
+      - name: Creating env file
+        run : |
+          echo "DB_SOURCE=${{ secrets.DB_SOURCE }}" >> .env
+          echo "DB_SOURCE_TEST=${{ secrets.DB_SOURCE_TEST }}" >> .env
+          echo "DB_DRIVER=${{ secrets.DB_DRIVER }}" >> .env
+          echo "SERVER_ADDRESS=8080" >> .env
+
       - name: Create Test Database
         run: make createdb
 
