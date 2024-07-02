@@ -16,10 +16,16 @@ WORKDIR /app
 
 COPY --from=builder /app/main .
 COPY --from=builder /go/bin/goose /usr/local/bin/goose
-COPY .env .
 COPY sql/schema /app/sql/schema
 
 RUN chmod +x /app/main
+
+# Set environment variables
+ARG DB_SOURCE
+ARG DB_SOURCE_TEST
+
+ENV DB_SOURCE=$DB_SOURCE
+ENV DB_SOURCE_TEST=$DB_SOURCE_TEST
 
 EXPOSE 8080
 
