@@ -40,5 +40,11 @@ sqlc:
 test:
 	DB_SOURCE=${DB_SOURCE_TEST} go test -v -cover ./...
 
+store-test:
+	DB_SOURCE=${DB_SOURCE_TEST}	go test -tags=storetest -v ./db/sqlc
+
+handler-test:
+	DB_SOURCE=${DB_SOURCE_TEST}	go test -tags=handlertest -v ./api
+
 server:
 	go run cmd/main.go

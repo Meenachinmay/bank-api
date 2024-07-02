@@ -25,6 +25,7 @@ func NewServer(store *sqlc.Store) *Server {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	// account related routes (login, signup, fetch)
 	router.POST("/accounts", server.createAccount)
 	router.POST("/accounts/login", server.loginAccount)
 	router.GET("/accounts/:id", server.getAccount)
@@ -33,7 +34,7 @@ func NewServer(store *sqlc.Store) *Server {
 	// referral_Code feature routes
 	router.POST("/referral/account/:account", server.createReferral)
 	router.POST("/referral/code/:code", server.useReferralCode)
-	router.POST("referral/calculate/:account", server.calculateInterest)
+	router.GET("referral/calculate/:account", server.calculateInterest)
 	router.GET("/referral-codes", server.getReferralCodesForAccount)
 
 	server.router = router
