@@ -21,12 +21,12 @@ COPY sql/schema /app/sql/schema
 RUN chmod +x /app/main
 
 # Set environment variables
-ARG DB_SOURCE
+ARG DB_SOURCE_PROD
 ARG DB_SOURCE_TEST
 
-ENV DB_SOURCE=$DB_SOURCE
+ENV DB_SOURCE_PROD=$DB_SOURCE_PROD
 ENV DB_SOURCE_TEST=$DB_SOURCE_TEST
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "goose -dir /app/sql/schema postgres \"$DB_SOURCE\" up && /app/main"]
+CMD ["sh", "-c", "goose -dir /app/sql/schema postgres \"$DB_SOURCE_PROD\" up && /app/main"]

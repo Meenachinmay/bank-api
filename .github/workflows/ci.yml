@@ -52,12 +52,15 @@ jobs:
 
       - name: Set Environment Variables
         run: |
-          echo "DB_SOURCE=${{ secrets.DB_SOURCE }}" >> $GITHUB_ENV
-          echo "DB_SOURCE_TEST=${{ secrets.DB_SOURCE_TEST }}" >> $GITHUB_ENV
-          echo "DB_DRIVER=${{ secrets.DB_DRIVER }}" >> $GITHUB_ENV
+          echo "DB_SOURCE_PROD=${{ secrets.DB_SOURCE_PROD }}" >> $GITHUB_ENV
+          echo "DB_SOURCE=postgres://postgres:password@localhost:5432/bankapi?sslmode=disable" >> $GITHUB_ENV
+          echo "DB_SOURCE_TEST=postgres://postgres:password@localhost:5432/bankapitest?sslmode=disable" >> $GITHUB_ENV
+          echo "DB_DRIVER=postgres" >> $GITHUB_ENV
+          echo "SERVER_ADDRESS=4000" >> $GITHUB_ENV
 
       - name: Create Test Database
-        run: make createdb
+        run: |
+          psql "postgres://postgres:password@localhost:5432/postgres?sslmode=disable" -tc "SELECT 1 FROM pg_database WHERE datname = 'bankapitest'" | grep -q 1 || psql "postgres://postgres:password@localhost:5432/postgres?sslmode=disable" -c 'CREATE DATABASE bankapitest;'
 
       - name: Run Migrations
         run: make dbmigrate-test
@@ -70,30 +73,3 @@ jobs:
 
       - name: Test Handler
         run: go test -tags=handlertest -v ./api
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build Docker image
-        run: |
-          docker build -t bankapi:latest .
-
-      - name: Tag docker image
-        run: |
-          REPOSITORY_URI="${{ secrets.ECR_REPOSITORY_URI }}"
-          IMAGE_TAG="${GITHUB_SHA}"
-          docker tag bankapi:latest $REPOSITORY_URI:$IMAGE_TAG
-
-      - name: Push to Amazon ECR
-        run: |
-          REPOSITORY_URI="${{ secrets.ECR_REPOSITORY_URI }}"
-          IMAGE_TAG="${GITHUB_SHA}"
-          docker push $REPOSITORY_URI:$IMAGE_TAG

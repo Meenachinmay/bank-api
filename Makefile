@@ -14,7 +14,7 @@ psql:
 
 createdb:
 	@echo "Checking if test database exists..."
-	psql $(DB_SOURCE) -tc "SELECT 1 FROM pg_database WHERE datname = 'bankapitest'" | grep -q 1 || psql $(DB_SOURCE) -c 'CREATE DATABASE bankapitest;'
+	psql $(DB_SOURCE_TEST) -tc "SELECT 1 FROM pg_database WHERE datname = 'bankapitest'" | grep -q 1 || psql $(DB_SOURCE) -c 'CREATE DATABASE bankapitest;'
 
 dbmigrate:
 	cd sql && cd schema && goose postgres "${DB_SOURCE}" up
@@ -69,3 +69,7 @@ down:
 	@echo "Stopping docker compose..."
 	docker-compose down
 	@echo "Done!"
+
+
+se:
+	export $(grep -v '^#' .env | xargs)
