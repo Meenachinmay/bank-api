@@ -17,10 +17,10 @@ createdb:
 	psql $(DB_SOURCE_TEST) -tc "SELECT 1 FROM pg_database WHERE datname = 'bankapitest'" | grep -q 1 || psql $(DB_SOURCE) -c 'CREATE DATABASE bankapitest;'
 
 dbmigrate:
-	cd sql && cd schema && goose postgres "${DB_SOURCE}" up
+	cd sql && cd schema && goose postgres "${DB_SOURCE_PROD}" up
 
 dbmigratedown:
-	cd sql && cd schema && goose postgres "${DB_SOURCE}" down
+	cd sql && cd schema && goose postgres "${DB_SOURCE_PROD}" down
 
 dbreset:
 	dbmigratedown && dbmigratedown

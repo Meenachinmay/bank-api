@@ -24,11 +24,12 @@ services:
       retries: 5
 
   api-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: startup2023/bank-api:latest
     ports:
       - "8080:8080"
+    deploy:
+      mode: replicated
+      replicas: 1
     restart: always
     env_file:
       - .env

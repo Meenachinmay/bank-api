@@ -1,7 +1,19 @@
 version: "3"
 
 services:
-  api:
+  caddy:
+    image: startup2023/bank-caddy:1.0.0
+    deploy:
+      mode: replicated
+      replicas: 1
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+  api-service:
     image: startup2023/bank-api
     ports:
       - "8080:8080"
@@ -38,3 +50,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+volumes:
+  caddy_data:
+    external: true
+  caddy_config:

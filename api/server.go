@@ -26,16 +26,16 @@ func NewServer(store *sqlc.Store) *Server {
 	}))
 
 	// account related routes (login, signup, fetch)
-	router.POST("/accounts", server.createAccount)
-	router.POST("/accounts/login", server.loginAccount)
-	router.GET("/accounts/:id", server.getAccount)
+	router.POST("/accounts", server.createAccount)      // create a account (email, name, referral_code?)
+	router.POST("/accounts/login", server.loginAccount) // login using email
+	router.GET("/accounts/:id", server.getAccount)      // get account detail for a user
 	router.GET("/accounts", server.getAccounts)
 
 	// referral_Code feature routes
-	router.POST("/referral/account/:account", server.createReferral)
-	router.POST("/referral/code/:code", server.useReferralCode)
-	router.GET("referral/calculate/:account", server.calculateInterest)
-	router.GET("/referral-codes", server.getReferralCodesForAccount)
+	router.POST("/referral/account/:account", server.createReferral)    // create a new referral code
+	router.POST("/referral/code/:code", server.useReferralCode)         //
+	router.GET("referral/calculate/:account", server.calculateInterest) // refresh extra interest for the following month
+	router.GET("/referral-codes", server.getReferralCodesForAccount)    // get all the referrals code for a user
 
 	server.router = router
 	return server
