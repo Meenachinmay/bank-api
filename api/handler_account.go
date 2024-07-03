@@ -46,6 +46,7 @@ func (server *Server) createAccount(ctx *gin.Context) {
 		}
 		// TODO: update balance as gift for new user joined with code
 		newBalance = 1000
+		// TODO: send email to referrer_account as notification so referrer cannot know about it.
 	}
 
 	arg := sqlc.CreateAccountParams{

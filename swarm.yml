@@ -1,40 +1,10 @@
-version: "3"
+version: '3.7'
 
 services:
-  caddy:
-    image: startup2023/bank-caddy:1.0.0
-    deploy:
-      mode: replicated
-      replicas: 1
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - caddy_data:/data
-      - caddy_config:/config
-
-  api-service:
-    image: startup2023/bank-api
-    ports:
-      - "8080:8080"
-    deploy:
-      mode: replicated
-      replicas: 1
-    restart: always
-    env_file:
-      - .env
-    environment:
-      - DB_SOURCE_PROD=${DB_SOURCE_PROD}
-      - DB_SOURCE_TEST=${DB_SOURCE_TEST}
-    depends_on:
-      - postgres
-
   postgres:
-    container_name: bank-postgres
     image: 'postgres:16.3-alpine'
     ports:
       - "5432:5432"
-    restart: always
     deploy:
       mode: replicated
       replicas: 1
@@ -46,12 +16,42 @@ services:
     volumes:
       - ./db-data/postgres/:/var/lib/postgresql/data/
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - bankapp_network
 
-volumes:
-  caddy_data:
-    external: true
-  caddy_config:
+  api-service:
+    image: startup2023/bank-api:latest
+    ports:
+      - "8080:8080"
+    deploy:
+      mode: replicated
+      replicas: 1
+    environment:
+      - DB_SOURCE_PROD=${DB_SOURCE_PROD}
+      - DB_SOURCE_TEST=${DB_SOURCE_TEST}
+    depends_on:
+      - postgres
+    networks:
+      - bankapp_network
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api-service
+    deploy:
+      mode: replicated
+      replicas: 1
+    networks:
+      - bankapp_network
+
+networks:
+  bankapp_network:
+    driver: overlay
