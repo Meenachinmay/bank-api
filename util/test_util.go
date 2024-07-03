@@ -4,14 +4,13 @@ import (
 	"database/sql"
 	_ "github.com/lib/pq"
 	"log"
-	"os"
 )
 
 var TestDB *sql.DB
 
 func SetupTestDB() {
 	var err error
-	TestDB, err = sql.Open("postgres", os.Getenv("DB_SOURCE_TEST"))
+	TestDB, err = sql.Open("postgres", "postgres://postgres:password@localhost:5432/bankapitest?sslmode=disable")
 	if err != nil {
 		log.Fatal("cannot connect to test db:", err)
 	}

@@ -17,10 +17,10 @@ createdb:
 	psql $(DB_SOURCE_TEST) -tc "SELECT 1 FROM pg_database WHERE datname = 'bankapitest'" | grep -q 1 || psql $(DB_SOURCE) -c 'CREATE DATABASE bankapitest;'
 
 dbmigrate:
-	cd sql && cd schema && goose postgres "${DB_SOURCE}" up
+	cd sql && cd schema && goose postgres "${DB_SOURCE_PROD}" up
 
 dbmigratedown:
-	cd sql && cd schema && goose postgres "${DB_SOURCE}" down
+	cd sql && cd schema && goose postgres "${DB_SOURCE_PROD}" down
 
 dbreset:
 	dbmigratedown && dbmigratedown
@@ -38,13 +38,13 @@ sqlc:
 	sqlc generate
 
 test:
-	DB_SOURCE=${DB_SOURCE_TEST} go test -v -cover ./...
+	DB_SOURCE=${DB_SOURCE_TEST} go test -v -count=1 -cover ./...
 
 store-test:
-	DB_SOURCE=${DB_SOURCE_TEST}	go test -tags=storetest -v ./db/sqlc
+	DB_SOURCE=${DB_SOURCE_TEST}	go test -tags=storetest -v -count=1 ./db/sqlc
 
 handler-test:
-	DB_SOURCE=${DB_SOURCE_TEST}	go test -tags=handlertest -v ./api
+	DB_SOURCE=${DB_SOURCE_TEST}	go test -tags=handlertest -v -count=1 ./api
 
 server:
 	go run cmd/main.go

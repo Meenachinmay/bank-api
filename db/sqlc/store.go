@@ -119,6 +119,7 @@ type UseReferralCodeTxResult struct {
 	ReferrerAccountUpdate Account `json:"referrer_account"`
 }
 
+// UseReferralCodeTx Calculate Interest for the following month
 func (store *Store) UseReferralCodeTx(ctx context.Context, arg UseReferralCodeTxParams) (UseReferralCodeTxResult, error) {
 	var result UseReferralCodeTxResult
 
